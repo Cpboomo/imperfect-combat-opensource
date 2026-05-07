@@ -2304,39 +2304,46 @@ function drawUI(){
     ctx.fillStyle = gameState.gold >= cardCost ? '#fff' : '#999';
     ctx.fillText('🎴 抽卡 💰'+cardCost, bx, by+14);
 
-    // ===== 技能栏（8格，放大）=====
+    // ===== 浮空技能卡（无技能栏，重叠悬浮）=====
     let sb = gameState.skillBar || [];
-    let slotSize = 30, gap = 4, totalW = (slotSize+gap)*8 - gap;
-    let startX = (canvas.width - totalW)/2;
-    let sy = canvas.height - 88;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath(); ctx.roundRect(startX-4, sy-4, totalW+8, slotSize+8, 5); ctx.fill();
+    let slotSize = 34, overlap = 8; // 每个卡重叠前一卡8px
+    let totalW = slotSize * MAX_SKILL_BAR - overlap * (MAX_SKILL_BAR - 1);
+    let baseY = canvas.height - 90;
+    let t = Date.now() / 1500; // 浮动画计时
 
     for(let i=0;i<MAX_SKILL_BAR;i++){
-        let sx = startX + i*(slotSize+gap);
+        let sx = (canvas.width - totalW)/2 + i*(slotSize - overlap);
+        let floatOffset = Math.sin(t * 1.3 + i * 1.2) * 2.5; // 每张卡独立浮动相位
+        let sy = baseY - floatOffset;
         let card = sb[i];
-        let bgColor = 'rgba(255,255,255,0.1)';
-        let borderColor = 'rgba(255,255,255,0.2)';
+        let bgColor = 'rgba(255,255,255,0.08)';
+        let borderColor = 'rgba(255,255,255,0.25)';
         if(card){
             let cfg = CARD_TYPES[card.type];
-            if(cfg){ bgColor = cfg.color+'40'; borderColor = cfg.color; }
+            if(cfg){ bgColor = cfg.color+'30'; borderColor = cfg.color; }
             // 修仙卡特殊样式
             if(card._cult || card.type==='cult_starter' || card.type==='cult_sub_starter' || card.type==='cult_sword_blue' || card.type==='cult_sword_gold'){
                 if(card.type==='cult_sword_gold' || card.rarity==='gold'){
-                    borderColor = '#ffd700'; bgColor = 'rgba(255,215,0,0.2)';
+                    borderColor = '#ffd700'; bgColor = 'rgba(255,215,0,0.25)';
                 } else if(card.type==='cult_sword_blue' || card.rarity==='blue'){
-                    borderColor = '#00d4ff'; bgColor = 'rgba(0,212,255,0.15)';
+                    borderColor = '#00d4ff'; bgColor = 'rgba(0,212,255,0.18)';
                 } else {
-                    borderColor = '#a855f7'; bgColor = 'rgba(168,85,247,0.15)';
+                    borderColor = '#a855f7'; bgColor = 'rgba(168,85,247,0.18)';
                 }
             }
         }
+        // 卡片阴影
+        ctx.shadowColor = card ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.15)';
+        ctx.shadowBlur = card ? 6 : 3;
+        ctx.shadowOffsetY = card ? 2 : 1;
         ctx.fillStyle = bgColor;
         ctx.strokeStyle = borderColor;
-        ctx.lineWidth = card && card._isCultL3 ? 2 : 1;
-        ctx.beginPath(); ctx.roundRect(sx, sy, slotSize, slotSize, 4); ctx.fill(); ctx.stroke();
+        ctx.lineWidth = card ? 1.5 : 0.8;
+        ctx.beginPath(); ctx.roundRect(sx, sy, slotSize, slotSize, 5); ctx.fill(); ctx.stroke();
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
         if(card){
-            ctx.font='16px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.font=card._isCultL3 ? 'bold 17px Arial' : '16px Arial';
+            ctx.textAlign='center'; ctx.textBaseline='middle';
             ctx.fillText(card.icon||'',sx+slotSize/2,sy+slotSize/2); ctx.textBaseline='alphabetic';
             // L2倒计时
             if(card._cultTimer !== undefined && card._cultTimer > 0){
@@ -2346,8 +2353,8 @@ function drawUI(){
             }
             // L3标记
             if(card._isCultL3){
-                ctx.fillStyle='rgba(255,215,0,0.6)'; ctx.font='7px Arial'; ctx.textAlign='center';
-                ctx.fillText('📖', sx+slotSize/2-1, sy-3);
+                ctx.fillStyle='rgba(255,215,0,0.7)'; ctx.font='7px Arial'; ctx.textAlign='center';
+                ctx.fillText('📖', sx+slotSize/2-1, sy-4);
             }
         }
     }
@@ -2357,7 +2364,7 @@ function drawUI(){
     var eqSlotSize = 28, eqGap = 6, maxEq = 5;
     var eqTotalW = (eqSlotSize+eqGap)*maxEq - eqGap;
     var eqStartX = (canvas.width - eqTotalW)/2;
-    var eqY = sy - eqSlotSize - 18; // 放在技能栏正上方
+    var eqY = baseY - eqSlotSize - 10; // 放在浮空技能卡正上方
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.beginPath(); ctx.roundRect(eqStartX-4, eqY-4, eqTotalW+8, eqSlotSize+8, 6); ctx.fill();
     // 标签
