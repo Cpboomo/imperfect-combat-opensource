@@ -140,39 +140,110 @@
         /* ===== 游戏结束面板 ===== */
         #gameover-panel {
             position:fixed; top:0; left:0; width:100%; height:100%;
-            background:rgba(0,0,0,0.85); display:none;
+            background:rgba(0,0,0,0.88); display:none;
             align-items:center; justify-content:center; z-index:900;
-            flex-direction:column;
+            flex-direction:column; overflow-y:auto;
         }
         #gameover-panel.active { display:flex; }
         .gameover-card {
-            background:linear-gradient(135deg,#1a1a3a,#0a0a1a);
-            border-radius:20px; padding:30px 36px;
-            border:1px solid rgba(255,255,255,0.1);
-            text-align:center; min-width:280px;
-            box-shadow:0 0 60px rgba(255,71,87,0.2);
+            background:linear-gradient(160deg,#0f0f23 0%,#1a1a3e 40%,#0d1b2a 100%);
+            border-radius:24px; padding:28px 24px 20px;
+            border:1px solid rgba(255,255,255,0.12);
+            text-align:center; width:330px; max-width:92vw;
+            box-shadow:0 8px 60px rgba(0,0,0,0.5);
+            position:relative; overflow:hidden;
         }
-        .gameover-title {
-            font-size:28px; font-weight:900; color:#ff4757; margin-bottom:6px;
+        .gameover-card::before {
+            content:''; position:absolute; top:-80px; left:50%;
+            transform:translateX(-50%);
+            width:200px; height:200px;
+            background:radial-gradient(circle, rgba(255,215,0,0.08), transparent 70%);
+            pointer-events:none;
         }
-        .gameover-subtitle { font-size:13px; color:#888; margin-bottom:20px; }
-        .gameover-stat {
-            display:flex; justify-content:space-between; padding:8px 0;
-            border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px;
+        .go-hero-section {
+            display:flex; flex-direction:column; align-items:center; margin-bottom:16px;
         }
-        .gameover-stat .label { color:#888; }
-        .gameover-stat .value { color:#ffdd59; font-weight:700; }
-        .gameover-stat:last-child { border-bottom:none; }
+        .go-hero-avatar {
+            width:64px; height:64px; border-radius:50%;
+            background:rgba(255,255,255,0.06);
+            border:2px solid rgba(255,215,0,0.3);
+            display:flex; align-items:center; justify-content:center;
+            font-size:32px; margin-bottom:6px;
+            box-shadow:0 0 20px rgba(255,215,0,0.1);
+        }
+        .go-hero-name {
+            font-size:15px; color:#ccc; font-weight:600;
+        }
+        .go-result-badge {
+            margin-top:4px; padding:3px 16px; border-radius:20px;
+            font-size:13px; font-weight:700; letter-spacing:1px;
+            background:rgba(255,215,0,0.15); color:#ffd700;
+            border:1px solid rgba(255,215,0,0.25);
+        }
+        .go-score-section {
+            margin:12px 0 16px;
+        }
+        .go-score-label {
+            font-size:12px; color:#888; text-transform:uppercase; letter-spacing:2px;
+            margin-bottom:2px;
+        }
+        .go-score-value {
+            font-size:48px; font-weight:900;
+            background:linear-gradient(180deg,#ffd700,#ffaa00);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            background-clip:text; line-height:1.1;
+        }
+        .go-score-grade {
+            display:inline-block; width:36px; height:36px; line-height:36px;
+            border-radius:50%; font-size:18px; font-weight:900;
+            background:rgba(255,215,0,0.2); color:#ffd700;
+            border:2px solid rgba(255,215,0,0.3);
+            margin-top:4px;
+        }
+        .go-stats-grid {
+            display:grid; grid-template-columns:1fr 1fr; gap:10px;
+            margin:0 0 12px;
+        }
+        .go-stat-item {
+            background:rgba(255,255,255,0.04);
+            border-radius:12px; padding:10px 8px;
+            border:1px solid rgba(255,255,255,0.06);
+        }
+        .go-stat-icon { font-size:18px; margin-bottom:2px; }
+        .go-stat-num { font-size:18px; font-weight:700; color:#fff; }
+        .go-stat-label { font-size:10px; color:#666; margin-top:2px; }
+        .go-detail-row {
+            background:rgba(255,255,255,0.03);
+            border-radius:10px; padding:8px 0;
+            margin-bottom:14px; font-size:12px; color:#888;
+        }
         #retry-btn {
-            margin-top:20px; width:100%; padding:14px; font-size:16px; font-weight:700;
+            width:100%; padding:14px; font-size:16px; font-weight:700;
             border:none; border-radius:12px;
-            background:linear-gradient(135deg,#ff4757,#ff6348); color:#fff;
-            cursor:pointer; transition:all 0.25s;
-            box-shadow:0 4px 15px rgba(255,71,87,0.3);
+            background:linear-gradient(135deg,#ff6b4a,#e74c3c); color:#fff;
+            cursor:pointer; transition:all 0.2s;
+            box-shadow:0 4px 15px rgba(255,107,74,0.3);
+            margin-bottom:14px;
         }
-        #retry-btn:hover { transform:translateY(-2px); }
+        #retry-btn:hover { transform:translateY(-1px); }
         #retry-btn:active { transform:scale(0.97); }
-        .gameover-tip { font-size:11px; color:#555; margin-top:12px; }
+        .go-share-section {
+            border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;
+        }
+        .go-share-title {
+            font-size:11px; color:#555; margin-bottom:8px;
+        }
+        .go-share-btns {
+            display:flex; gap:8px; justify-content:center;
+        }
+        .go-share-btn {
+            flex:1; padding:10px 0; border-radius:10px; border:none;
+            font-size:13px; font-weight:600; cursor:pointer;
+            color:#fff; transition:all 0.2s;
+        }
+        .go-share-btn.wechat { background:#07c160; }
+        .go-share-btn.copy { background:rgba(255,255,255,0.12); }
+        .go-share-btn:active { transform:scale(0.96); opacity:0.85; }
 
         /* ===== 角色选择 ===== */
         #hero-select {
@@ -423,16 +494,50 @@
 
     <!-- 游戏结束面板 -->
     <div id="gameover-panel">
-        <div class="gameover-card">
-            <div class="gameover-title" id="go-title">💀 战斗结束</div>
-            <div class="gameover-subtitle">你的英雄倒下了</div>
-            <div class="gameover-stat"><span class="label">最终得分</span><span class="value" id="go-score">0</span></div>
-            <div class="gameover-stat"><span class="label">击杀数</span><span class="value" id="go-kills">0</span></div>
-            <div class="gameover-stat"><span class="label">最高波次</span><span class="value" id="go-wave">1</span></div>
-            <div class="gameover-stat"><span class="label">存活时间</span><span class="value" id="go-time">0:00</span></div>
-            <div class="gameover-stat"><span class="label">难度</span><span class="value" id="go-diff">难1</span></div>
+        <div class="gameover-card" id="go-card">
+            <div class="go-hero-section">
+                <div class="go-hero-avatar" id="go-avatar">🧘</div>
+                <div class="go-hero-name" id="go-hero-name">修仙大仙</div>
+                <div class="go-result-badge" id="go-badge">🏆 通关</div>
+            </div>
+            <div class="go-score-section">
+                <div class="go-score-label">最终得分</div>
+                <div class="go-score-value" id="go-score">0</div>
+                <div class="go-score-grade" id="go-grade">C</div>
+            </div>
+            <div class="go-stats-grid">
+                <div class="go-stat-item">
+                    <div class="go-stat-icon">💀</div>
+                    <div class="go-stat-num" id="go-kills">0</div>
+                    <div class="go-stat-label">击杀数</div>
+                </div>
+                <div class="go-stat-item">
+                    <div class="go-stat-icon">🌊</div>
+                    <div class="go-stat-num" id="go-wave">1波</div>
+                    <div class="go-stat-label">最高波次</div>
+                </div>
+                <div class="go-stat-item">
+                    <div class="go-stat-icon">⏱️</div>
+                    <div class="go-stat-num" id="go-time">0:00</div>
+                    <div class="go-stat-label">存活时间</div>
+                </div>
+                <div class="go-stat-item">
+                    <div class="go-stat-icon">⚔️</div>
+                    <div class="go-stat-num" id="go-diff">难1</div>
+                    <div class="go-stat-label">难度</div>
+                </div>
+            </div>
+            <div class="go-detail-row" id="go-detail">
+                <span id="go-detail-text">修仙剑仙 · 5波通关</span>
+            </div>
             <button id="retry-btn" onclick="restartGame()">🔄 再来一局</button>
-            <div class="gameover-tip">点击"再来一局"以相同难度重新开始</div>
+            <div class="go-share-section">
+                <div class="go-share-title">分享战绩</div>
+                <div class="go-share-btns">
+                    <button class="go-share-btn wechat" onclick="shareResult('wechat')" title="微信分享">💬 微信</button>
+                    <button class="go-share-btn copy" onclick="shareResult('copy')" title="复制链接">🔗 复制</button>
+                </div>
+            </div>
         </div>
     </div>
 

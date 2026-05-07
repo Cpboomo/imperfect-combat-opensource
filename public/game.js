@@ -1248,20 +1248,7 @@ function triggerVictory(){
     gameState.gameCompleted = true;
     gameState.totalPlayTime = Math.floor((Date.now()-gameState.gameStartTime)/1000);
     SFX && SFX.gameover && SFX.gameover();
-    // 使用已有的gameover面板显示胜利信息
-    let panel = document.getElementById('gameover-panel');
-    if(panel){
-        document.getElementById('go-title').textContent = '🎉 通关胜利!';
-        document.getElementById('go-title').style.color = '#ffd700';
-        document.getElementById('go-score').textContent = gameState.score;
-        document.getElementById('go-kills').textContent = gameState.kills;
-        document.getElementById('go-wave').textContent = gameState.wave+'波';
-        document.getElementById('go-time').textContent = formatTime(gameState.totalPlayTime);
-        document.getElementById('go-diff').textContent = '🏆 恭喜通关!';
-        document.getElementById('go-diff').style.color = '#ffd700';
-        panel.classList.add('active');
-    }
-    // 尝试win音效
+    updateGameOverPanel(true);
     try{ SFX.win && SFX.win(); }catch(e){}
 }
 
@@ -1625,23 +1612,88 @@ class Monster {
 }
 
 // ==================== 游戏结束 ====================
+function updateGameOverPanel(isWin){
+    let panel = document.getElementById('gameover-panel');
+    if(!panel) return;
+
+    // 角色信息
+    var hn = currentHero && HERO_CLASSES[currentHero] ? HERO_CLASSES[currentHero] : {icon:'🧘',name:'未知'};
+    document.getElementById('go-avatar').textContent = hn.icon || '🧘';
+    document.getElementById('go-hero-name').textContent = hn.name || '未知';
+
+    // 胜负徽章
+    var badge = document.getElementById('go-badge');
+    if(isWin){
+        badge.textContent = '🏆 通关';
+        badge.style.background = 'rgba(255,215,0,0.15)';
+        badge.style.color = '#ffd700';
+        badge.style.borderColor = 'rgba(255,215,0,0.25)';
+    } else {
+        badge.textContent = '💀 阵亡';
+        badge.style.background = 'rgba(255,71,87,0.15)';
+        badge.style.color = '#ff4757';
+        badge.style.borderColor = 'rgba(255,71,87,0.25)';
+    }
+
+    // 分数
+    document.getElementById('go-score').textContent = gameState.score;
+
+    // 评分等级（基于分数）
+    var score = gameState.score;
+    var grade, gradeColor;
+    if(score >= 200000){ grade='S'; gradeColor='#ffd700'; }
+    else if(score >= 120000){ grade='A'; gradeColor='#ff6b4a'; }
+    else if(score >= 60000){ grade='B'; gradeColor='#00d4ff'; }
+    else { grade='C'; gradeColor='#888'; }
+    var gradeEl = document.getElementById('go-grade');
+    gradeEl.textContent = grade;
+    gradeEl.style.color = gradeColor;
+    gradeEl.style.borderColor = gradeColor;
+    gradeEl.style.background = 'rgba(255,255,255,0.06)';
+
+    // 统计
+    document.getElementById('go-kills').textContent = gameState.kills;
+    document.getElementById('go-wave').textContent = (isWin ? gameState.wave : gameState.wave-1)+'波';
+    document.getElementById('go-time').textContent = formatTime(gameState.totalPlayTime);
+    document.getElementById('go-diff').textContent = runtimeMultipliers ? runtimeMultipliers.name : '难1';
+
+    // 底部详情文字
+    var detailText = hn.icon+' '+hn.name+' · '+(isWin ? gameState.wave+'波通关' : '第'+(gameState.wave-1)+'波阵亡');
+    document.getElementById('go-detail-text').textContent = detailText;
+
+    panel.classList.add('active');
+}
+
+function shareResult(channel){
+    var hn = currentHero && HERO_CLASSES[currentHero] ? HERO_CLASSES[currentHero] : {icon:'🧘',name:'未知'};
+    var text = '⚔️ 不完美作战 v4.3.1\n' +
+        hn.icon+' '+hn.name+' · 得分 '+gameState.score+' · 评级 '+document.getElementById('go-grade').textContent+'\n' +
+        '💀'+gameState.kills+'杀 🌊'+gameState.wave+'波 ⏱️'+formatTime(gameState.totalPlayTime)+'\n' +
+        '🎮 来挑战：https://cpboomo.github.io/imperfect-combat-opensource/';
+    if(channel === 'copy'){
+        navigator.clipboard.writeText(text).then(function(){
+            screenText('✅ 战绩已复制!', '#2ed573', 1500);
+        }).catch(function(){
+            screenText('⚠️ 复制失败,请重试', '#ff4757', 1500);
+        });
+    } else if(channel === 'wechat'){
+        // 微信端尝试唤起分享
+        if(typeof wx !== 'undefined' && wx){
+            try{ wx.showShareMenu({menus:['shareAppMessage','shareTimeline']}); }catch(e){}
+        }
+        navigator.clipboard.writeText(text).then(function(){
+            screenText('✅ 战绩已复制,去微信粘贴吧!', '#2ed573', 2000);
+        }).catch(function(){
+            screenText('⚠️ 请截屏分享', '#ff4757', 1500);
+        });
+    }
+}
+
 function triggerGameOver(){
     gameState.isGameOver=true;
     gameState.totalPlayTime=Math.floor((Date.now()-gameState.gameStartTime)/1000);
     SFX.gameover();
-    // 显示结束面板
-    let panel=document.getElementById('gameover-panel');
-    if(panel){
-        document.getElementById('go-title').textContent='💀 战斗结束';
-        document.getElementById('go-title').style.color='#ff4757';
-        document.getElementById('go-score').textContent=gameState.score;
-        document.getElementById('go-kills').textContent=gameState.kills;
-        document.getElementById('go-wave').textContent=gameState.wave+'波';
-        document.getElementById('go-time').textContent=formatTime(gameState.totalPlayTime);
-        var hn=currentHero&&HERO_CLASSES[currentHero]?HERO_CLASSES[currentHero].icon+' '+HERO_CLASSES[currentHero].name:'';
-        document.getElementById('go-diff').textContent=(hn?hn+' | ':'')+runtimeMultipliers.name;
-        panel.classList.add('active');
-    }
+    updateGameOverPanel(false);
 }
 function formatTime(s){
     let m=Math.floor(s/60), sec=s%60;
