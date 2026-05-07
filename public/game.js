@@ -1711,6 +1711,7 @@ function restartGame(){
     gameState.particles=[];
     gameState.floatingTexts=[];
     gameState.currentPath=[]; gameState.currentPathIndex=0;
+    if(gameState.player){ gameState.player._vx=0; gameState.player._vy=0; }
     gameState.wave=0; gameState.waveMonstersSpawned=0;
     gameState.score=0; gameState.kills=0; gameState.maxWave=1;
     gameState.isBetweenWaves=true; gameState.betweenWaveTimer=Date.now();
@@ -1803,7 +1804,7 @@ function handleCanvasClick(event){
     var aiX=canvas.width-56,aiY=225,aiW=34;
     if(sx>=aiX&&sx<=aiX+aiW&&sy>=aiY&&sy<=aiY+aiW){
         gameState.aiEnabled=!(gameState.aiEnabled||false);
-        if(!gameState.aiEnabled){gameState.currentPath=[];gameState.player.isMoving=false;}
+        if(!gameState.aiEnabled){gameState.currentPath=[];gameState.player.isMoving=false;gameState.player._vx=0;gameState.player._vy=0;}
         return;
     }
     // AI 模式切换
@@ -1859,7 +1860,7 @@ function handleCanvasClick(event){
             let dtx=p.x+(dx/dist)*dd2, dty=p.y+(dy/dist)*dd2;
             let vp=findNearestValidPosition(dtx,dty,CONFIG.DASH_DISTANCE);
             if(performDash(p.x,p.y,vp.x,vp.y)){
-                p.x=vp.x; p.y=vp.y; gameState.currentPath=[];
+                p.x=vp.x; p.y=vp.y; gameState.currentPath=[]; p._vx=0; p._vy=0;
                 // 闪现时对路径上的怪物造成伤害
                 for(let m of gameState.monsters){
                     if(distance({x:vp.x,y:vp.y},m)<CONFIG.PLAYER_SIZE+m.size){
@@ -2990,15 +2991,67 @@ function updatePlayerMovement(){
         if(Math.abs(p._kbX)<0.05) p._kbX=0;
         if(Math.abs(p._kbY)<0.05) p._kbY=0;
     }
-    if(!p.isMoving) return;
-    let spd=CONFIG.PLAYER_SPEED+(p.extraSpd||0);
-    if(gameState.currentPath.length===0||gameState.currentPathIndex>=gameState.currentPath.length){ p.isMoving=false; return; }
-    let tn=gameState.currentPath[gameState.currentPathIndex];
-    let mv=calculateVector(p.x,p.y,tn.x,tn.y,spd);
-    if(mv.arrived){ gameState.currentPathIndex++; if(gameState.currentPathIndex>=gameState.currentPath.length){p.isMoving=false;gameState.currentPathIndex=0;} return; }
-    let nx=p.x+mv.x, ny=p.y+mv.y;
-    if(canMoveTo(nx,ny)){ p.x=nx; p.y=ny; }
-    else{ if(canMoveTo(nx,p.y))p.x=nx; if(canMoveTo(p.x,ny))p.y=ny; }
+
+    // 阻尼运动：速度衰减（无输入时自然减速）
+    let _dt=Math.min(16/1000, 0.033); // 帧时间（秒）
+    if(!p._vx) p._vx=0;
+    if(!p._vy) p._vy=0;
+
+    if(p.isMoving && gameState.currentPath.length>0 && gameState.currentPathIndex<gameState.currentPath.length){
+        // →F_推：向目标方向加速
+        let spd=(CONFIG.PLAYER_SPEED+(p.extraSpd||0))*4;
+        let tn=gameState.currentPath[gameState.currentPathIndex];
+        let dx=tn.x-p.x, dy=tn.y-p.y;
+        let dist=Math.sqrt(dx*dx+dy*dy);
+
+        // 到达目标点
+        if(dist<4){
+            gameState.currentPathIndex++;
+            if(gameState.currentPathIndex>=gameState.currentPath.length){
+                p.isMoving=false; gameState.currentPathIndex=0;
+            }
+        } else {
+            let nx=dx/dist, ny=dy/dist;
+            let pushForce=spd*5;
+            p._vx+=nx*pushForce*_dt;
+            p._vy+=ny*pushForce*_dt;
+        }
+    }
+
+    // →F_阻：摩擦力/阻尼
+    let maxSpeed=(CONFIG.PLAYER_SPEED+(p.extraSpd||0))*6;
+    let currentSpeed=Math.sqrt(p._vx*p._vx+p._vy*p._vy);
+    if(currentSpeed>maxSpeed){
+        // 限速
+        let damp=0.85;
+        if(!p.isMoving) damp=0.8; // 停止时更强阻尼
+        p._vx*=damp;
+        p._vy*=damp;
+    } else if(currentSpeed>0.5){
+        // 自然阻尼
+        let damping=1-(3.5*_dt);
+        if(damping<0) damping=0;
+        if(!p.isMoving) damping*=0.85; // 到达后半段强阻尼
+        p._vx*=damping;
+        p._vy*=damping;
+    }
+
+    // →p = →p + →v·dt
+    let nxPos=p.x+p._vx*_dt, nyPos=p.y+p._vy*_dt;
+    if(Math.abs(p._vx*_dt)>0.05||Math.abs(p._vy*_dt)>0.05){
+        if(canMoveTo(nxPos,nyPos)){
+            p.x=nxPos; p.y=nyPos;
+        } else {
+            p._vx*=0.5; p._vy*=0.5; // 碰墙减速
+            if(canMoveTo(nxPos,p.y)) p.x=nxPos;
+            if(canMoveTo(p.x,nyPos)) p.y=nyPos;
+        }
+    }
+
+    // 完全静止时清空速度
+    if(!p.isMoving && currentSpeed<0.5){
+        p._vx=0; p._vy=0;
+    }
 }
 
 function updateMonsters(){
