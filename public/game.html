@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>不完美作战 v4.3.1</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+            background: #0a0a1a; color: #fff; overflow: hidden;
+            display: flex; flex-direction:column; align-items:center; justify-content:center;
+            min-height: 100vh; min-height: 100dvh;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none; -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        /* ===== 启动画面 ===== */
+        #start-screen {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%);
+            display: flex; flex-direction:column; align-items:center; justify-content:center;
+            z-index: 1000; transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        #start-screen.hidden { opacity:0; pointer-events:none; transform:scale(1.05); }
+        .game-title {
+            font-size: clamp(28px,8vw,42px); font-weight:900;
+            background: linear-gradient(135deg,#00d4ff,#8b5cf6,#ff69b4);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+            margin-bottom: 6px; letter-spacing:2px;
+        }
+        .game-subtitle { font-size:13px; color:#666; margin-bottom:8px; }
+        .version-tag {
+            padding:2px 10px; border-radius:10px;
+            font-size:10px; background:rgba(139,92,246,0.2); color:#8b5cf6;
+            border:1px solid rgba(139,92,246,0.3); margin-bottom:24px;
+        }
+        .feature-tags { display:flex; gap:8px; justify-content:center; margin-bottom:24px; flex-wrap:wrap; }
+        .feature-tag {
+            padding:4px 10px; border-radius:14px; font-size:10px;
+            background:rgba(0,212,255,0.1); color:#00d4ff;
+            border:1px solid rgba(0,212,255,0.2);
+        }
+        .difficulty-section {
+            background:rgba(255,255,255,0.04); border-radius:16px;
+            padding:24px 28px; border:1px solid rgba(255,255,255,0.08);
+            backdrop-filter:blur(10px); min-width:280px;
+        }
+        .difficulty-label { font-size:14px; margin-bottom:12px; color:#888; text-align:center; }
+        #difficulty-select {
+            width:100%; padding:13px 16px; font-size:15px; border-radius:10px;
+            border:2px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.4);
+            color:#fff; cursor:pointer; margin-bottom:12px; outline:none;
+            transition:border-color 0.3s; -webkit-appearance:none; appearance:none;
+        }
+        #difficulty-select:hover,#difficulty-select:focus { border-color:#00d4ff; }
+        .difficulty-info { font-size:11px; color:#888; margin-bottom:20px; text-align:center; line-height:1.5; }
+        .difficulty-info._1{color:#7bed9f}.difficulty-info._2{color:#7bed9f}.difficulty-info._3{color:#7bed9f}
+        .difficulty-info._4{color:#70a1ff}.difficulty-info._5{color:#70a1ff}.difficulty-info._6{color:#70a1ff}
+        .difficulty-info._7{color:#ffa502}.difficulty-info._8{color:#ffa502}
+        .difficulty-info._9{color:#ff4757}.difficulty-info._10{color:#ff4757}
+        #start-btn {
+            width:100%; padding:16px; font-size:17px; font-weight:700; border:none; border-radius:12px;
+            background: linear-gradient(135deg,#8b5cf6,#00d4ff); color:#fff; cursor:pointer;
+            transition:all 0.25s; box-shadow:0 4px 20px rgba(139,92,246,0.35);
+            letter-spacing:1px;
+        }
+        #start-btn:hover { transform:translateY(-2px); box-shadow:0 6px 25px rgba(0,212,255,0.5); }
+        #start-btn:active { transform:scale(0.97); }
+        .sound-toggle {
+            display:flex; align-items:center; gap:8px; justify-content:center;
+            margin-top:14px; cursor:pointer; color:#666; font-size:12px;
+        }
+
+        /* ===== 游戏容器 ===== */
+        #game-container { position:fixed; top:0; left:0; width:100vw; height:100vh; display:none; background:#1a1a2e; overflow:hidden; }
+        #game-container.active { display:block; }
+        #game-canvas {
+            position:absolute; top:0; left:0;
+            transform-origin:0 0;
+        }
+
+        /* ===== 暂停覆盖层 ===== */
+        #pause-overlay {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.7); display:none;
+            align-items:center; justify-content:center; z-index:500;
+            flex-direction:column; gap:16px;
+        }
+        #pause-overlay.active { display:flex; }
+        #pause-overlay .pause-text { font-size:28px; font-weight:900; color:#fff; }
+        #pause-overlay .pause-btn {
+            padding:12px 32px; font-size:15px; border:none; border-radius:10px;
+            background:rgba(255,255,255,0.15); color:#fff; cursor:pointer;
+            transition:background 0.2s;
+        }
+        #pause-overlay .pause-btn:hover { background:rgba(255,255,255,0.25); }
+
+        /* ===== 卡牌选择 ===== */
+        #card-overlay {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.82); display:none; z-index:600;
+            align-items:center; justify-content:center;
+        }
+        #card-overlay.active { display:flex; }
+        .card-panel {
+            background:linear-gradient(135deg,#1a1a3a,#0a0a1a);
+            border-radius:20px; padding:24px 20px;
+            border:1px solid rgba(255,255,255,0.1); text-align:center;
+            min-width:300px; box-shadow:0 0 60px rgba(0,212,255,0.15);
+        }
+        .card-title { font-size:22px; font-weight:900; margin-bottom:4px; }
+        .card-subtitle { font-size:12px; color:#666; margin-bottom:16px; }
+        .card-container { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+        .card-item {
+            width:80px; padding:14px 8px; border-radius:14px;
+            cursor:pointer; transition:all 0.25s;
+            background:rgba(255,255,255,0.06);
+            border:2px solid transparent;
+            text-align:center; animation:cardAppear 0.3s ease-out;
+        }
+        .card-item:hover { transform:translateY(-6px); border-color:var(--card-color,#00d4ff); box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+        .card-item:active { transform:scale(0.92); }
+        .card-icon { font-size:32px; margin-bottom:6px; }
+        .card-name { font-size:12px; font-weight:700; color:#fff; margin-bottom:4px; }
+        .card-desc { font-size:10px; color:#888; }
+        .card-extra { font-size:9px; color:#ffd700; margin-top:3px; }
+        .card-timer { font-size:11px; color:#555; margin-top:12px; }
+        @keyframes cardAppear { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+        .card-timer { font-size:11px; color:#555; margin-top:12px; }
+        .shop-btn{padding:6px 14px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;
+            background:linear-gradient(135deg,#f1c40f,#e67e22);color:#fff;transition:all 0.2s;}
+        .shop-btn:active{transform:scale(0.95);}
+        .close-btn{background:rgba(255,255,255,0.12);color:#999;}
+        .close-btn:active{background:rgba(255,255,255,0.2);}
+
+        /* ===== 游戏结束面板 ===== */
+        #gameover-panel {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.85); display:none;
+            align-items:center; justify-content:center; z-index:900;
+            flex-direction:column;
+        }
+        #gameover-panel.active { display:flex; }
+        .gameover-card {
+            background:linear-gradient(135deg,#1a1a3a,#0a0a1a);
+            border-radius:20px; padding:30px 36px;
+            border:1px solid rgba(255,255,255,0.1);
+            text-align:center; min-width:280px;
+            box-shadow:0 0 60px rgba(255,71,87,0.2);
+        }
+        .gameover-title {
+            font-size:28px; font-weight:900; color:#ff4757; margin-bottom:6px;
+        }
+        .gameover-subtitle { font-size:13px; color:#888; margin-bottom:20px; }
+        .gameover-stat {
+            display:flex; justify-content:space-between; padding:8px 0;
+            border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px;
+        }
+        .gameover-stat .label { color:#888; }
+        .gameover-stat .value { color:#ffdd59; font-weight:700; }
+        .gameover-stat:last-child { border-bottom:none; }
+        #retry-btn {
+            margin-top:20px; width:100%; padding:14px; font-size:16px; font-weight:700;
+            border:none; border-radius:12px;
+            background:linear-gradient(135deg,#ff4757,#ff6348); color:#fff;
+            cursor:pointer; transition:all 0.25s;
+            box-shadow:0 4px 15px rgba(255,71,87,0.3);
+        }
+        #retry-btn:hover { transform:translateY(-2px); }
+        #retry-btn:active { transform:scale(0.97); }
+        .gameover-tip { font-size:11px; color:#555; margin-top:12px; }
+
+        /* ===== 角色选择 ===== */
+        #hero-select {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            display:flex; align-items:center; justify-content:center;
+            background:rgba(0,0,0,0.75); z-index:200;
+        }
+        #hero-select.hidden { display:none; }
+        .hero-panel {
+            background:#1a1a2e; border:1px solid #333; border-radius:16px;
+            padding:28px 24px; width:480px; max-width:92vw;
+            box-shadow:0 0 40px rgba(0,212,255,0.15);
+        }
+        .hero-title {
+            font-size:22px; color:#fff; text-align:center;
+            margin-bottom:24px; font-weight:700;
+        }
+        .hero-grid {
+            display:flex; gap:14px; justify-content:center;
+        }
+        .hero-card {
+            background:rgba(255,255,255,0.04); border:2px solid #333;
+            border-radius:12px; padding:14px 12px; width:140px;
+            cursor:pointer; text-align:center;
+            transition:all 0.25s;
+        }
+        .hero-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,212,255,0.15); }
+        .hero-card.selected { border-color:#00d4ff; background:rgba(0,212,255,0.08); }
+        .hero-icon {
+            font-size:42px; width:70px; height:70px; line-height:70px;
+            border-radius:50%; border:2px solid;
+            margin:0 auto 8px; text-align:center;
+        }
+        .hero-name { font-size:16px; font-weight:700; margin-bottom:4px; }
+        .hero-desc { font-size:11px; color:#888; margin-bottom:6px; }
+        .hero-bonus { font-size:10px; color:#666; margin-bottom:8px; line-height:1.4; }
+        .hero-stats { font-size:10px; color:#aaa; display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+        .hero-stats span { background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; }
+        .hero-confirm-btn {
+            display:block; margin:20px auto 0; padding:10px 32px;
+            background:linear-gradient(135deg,#00d4ff,#a855f7);
+            border:none; border-radius:8px; color:#fff;
+            font-size:15px; font-weight:700; cursor:pointer;
+            transition:all 0.2s;
+        }
+        .hero-confirm-btn:disabled {
+            opacity:0.3; cursor:default;
+            background:linear-gradient(135deg,#555,#444);
+        }
+        .hero-confirm-btn:not(:disabled):hover { transform:scale(1.04); }
+
+        /* ===== 藏剑面板 ===== */
+        #hidden-sword-panel {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            display:flex; align-items:center; justify-content:center;
+            background:rgba(0,0,0,0.6); z-index:300;
+        }
+        #hidden-sword-panel.hidden { display:none; }
+        #hidden-sword-inner {
+            background:#1a1a2e; border:2px solid #ffd700; border-radius:16px;
+            padding:24px; width:300px; max-width:90vw;
+            box-shadow:0 0 40px rgba(255,215,0,0.2);
+        }
+        .hs-title {
+            font-size:20px; color:#ffd700; text-align:center; margin-bottom:16px; font-weight:700;
+        }
+        .hs-section {
+            background:rgba(255,255,255,0.05); border-radius:8px; padding:12px; margin-bottom:10px;
+            cursor:pointer; transition:all 0.2s;
+        }
+        .hs-section:hover { transform:translateY(-1px); }
+        .hs-section.disabled { opacity:0.4; cursor:default; }
+        .hs-section-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+        .hs-section-desc { font-size:11px; color:#888; }
+        .hs-close {
+            display:block; margin:12px auto 0; padding:8px 24px;
+            background:rgba(255,255,255,0.1); border:1px solid #555;
+            border-radius:6px; color:#fff; font-size:13px; cursor:pointer;
+        }
+        .hs-close:hover { background:rgba(255,255,255,0.2); }
+
+        /* ===== Loading ===== */
+        #loading {
+            position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+            font-size:16px; color:#00d4ff; z-index:400; display:none;
+        }
+        #loading.active { display:block; }
+        .chestCard-item { width:90px; padding:12px 6px; border-radius:10px; border:2px solid #555;
+            background:rgba(255,255,255,0.05); cursor:pointer; transition:all 0.2s;
+            display:flex; flex-direction:column; align-items:center; gap:4px; }
+        .chestCard-item:hover { border-color:#ffd700; background:rgba(255,215,0,0.1); transform:scale(1.05); }
+        .chestCard-item:active { transform:scale(0.92); background:rgba(255,215,0,0.15); }
+        .chestCard-icon { font-size:36px; line-height:1; }
+        #chestCard-overlay { animation: chestFadeIn 0.3s ease-out; }
+        @keyframes chestFadeIn { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
+        .chestCard-name { font-size:13px; font-weight:bold; color:#00ff88; }
+        .chestCard-type { font-size:10px; color:#aaa; }
+        /* ===== 羁绊面板 ===== */
+        #bond-overlay, #bond-detail-overlay {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.85); z-index:300; display:none;
+            align-items:center; justify-content:center;
+        }
+        #bond-overlay.active, #bond-detail-overlay.active { display:flex; }
+        .bond-panel {
+            background:linear-gradient(135deg,#1a1a3a,#0a0a1a);
+            border-radius:16px; padding:20px; border:1px solid rgba(255,255,255,0.1);
+            min-width:300px; max-width:400px; max-height:80vh; overflow-y:auto;
+        }
+        .bond-panel h2 { text-align:center; font-size:18px; color:#00d4ff; margin:0 0 16px; }
+        .bond-items { display:flex; flex-direction:column; gap:6px; }
+        .bond-type { background:rgba(255,255,255,0.04); border-radius:10px; padding:8px 10px; cursor:pointer; transition:0.15s; }
+        .bond-type:hover { background:rgba(255,255,255,0.08); }
+        .bond-type.activated { border-left:3px solid #22c55e; }
+        .bond-type.dimmed { border-left:3px solid #555; }
+        .bond-type-header { display:flex; justify-content:space-between; align-items:center; }
+        .bond-type-name { font-size:13px; font-weight:bold; }
+        .bond-type-name.dimmed { color:#888; }
+        .bond-type-badge { font-size:11px; padding:2px 8px; border-radius:10px; }
+        .bond-type-badge.activated { background:#22c55e33; color:#22c55e; }
+        .bond-type-badge.dimmed { background:#555; color:#aaa; }
+        .bond-type-desc { font-size:11px; color:#888; margin-top:4px; }
+        .bond-type-desc.dimmed { color:#555; }
+        /* 羁绊详情 */
+        .bond-detail-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+        .bond-detail-title { font-size:18px; font-weight:bold; }
+        .bond-detail-status { font-size:12px; padding:2px 10px; border-radius:10px; }
+        .bond-detail-status.active { background:#22c55e33; color:#22c55e; }
+        .bond-detail-status.dimmed { background:#555; color:#aaa; }
+        .bond-detail-desc { font-size:12px; color:#888; margin-bottom:12px; }
+        .bond-detail-cards { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+        .bond-detail-card { background:rgba(255,255,255,0.04); border-radius:8px; padding:6px; text-align:center; }
+        .bond-detail-card.owned { border:1px solid #22c55e44; }
+        .bdc-icon { font-size:24px; }
+        .bdc-name { font-size:10px; margin-top:2px; }
+        .bdc-name.dimmed { color:#666; }
+        .bdc-effect { font-size:9px; color:#888; }
+        .bdc-effect.dimmed { color:#444; }
+        .bdc-own { font-size:12px; margin-top:2px; }
+        .bond-detail-progress { margin-top:12px; }
+        .bdc-title { font-size:11px; color:#888; margin-bottom:4px; }
+        .bar { height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; }
+        .bar-fill { height:100%; border-radius:3px; transition:width 0.3s; }
+        .bond-detail-back { margin-top:12px; padding:6px 20px; background:rgba(255,255,255,0.08); border:none; border-radius:6px; color:#888; font-size:12px; cursor:pointer; width:100%; }
+    </style>
+</head>
+<body>
+    <!-- 启动画面 -->
+    <div id="start-screen">
+        <h1 class="game-title">不完美作战</h1>
+        <p class="game-subtitle">IMPERFECT COMBAT</p>
+        <span class="version-tag">v4.3.1</span>
+
+        <div class="feature-tags">
+            <span class="feature-tag">⚔ 自动攻击</span>
+            <span class="feature-tag">🌊 波次生存</span>
+            <span class="feature-tag">⚡ 闪现</span>
+            <span class="feature-tag">🎵 音效</span>
+        </div>
+
+        <div class="difficulty-section">
+            <p class="difficulty-label">选择难度</p>
+            <select id="difficulty-select">
+                <option value="n1" selected>🟢 难1</option>
+                <option value="n2">🟢 难2</option>
+                <option value="n3">🟢 难3</option>
+                <option value="n4">🔵 难4</option>
+                <option value="n5">🔵 难5</option>
+                <option value="n6">🔵 难6</option>
+                <option value="n7">🟠 难7</option>
+                <option value="n8">🟠 难8</option>
+                <option value="n9">🔴 难9</option>
+                <option value="n10">🔴 难10</option>
+            </select>
+            <div id="difficulty-desc" class="difficulty-info normal">
+                怪物血量 ×1.0 | 刷怪速度 ×1.0 | 怪物速度 ×1.0
+            </div>
+            <button id="start-btn">🎮 开始作战</button>
+        </div>
+
+        <div class="sound-toggle" id="sound-toggle">
+            <span id="sound-icon">🔊</span>
+            <span id="sound-text">音效已开启（点击关闭）</span>
+        </div>
+    </div>
+
+    <!-- 角色选择 -->
+    <div id="hero-select" class="hidden">
+        <div class="hero-panel">
+            <div class="hero-title">选择你的角色</div>
+            <div class="hero-grid">
+                <div class="hero-card" data-hero="xian">
+                    <div class="hero-icon" style="background:#00d4ff22;border-color:#00d4ff">🧙</div>
+                    <div class="hero-name" style="color:#00d4ff">修仙大仙</div>
+                    <div class="hero-desc">远程法系 · 飞剑追击</div>
+                    <div class="hero-bonus">飞剑追击: 攻30%概率额外射出一枚自动追踪飞剑</div>
+                    <div class="hero-stats">
+                        <span>❤️250</span><span>💎200</span><span>⚔️12~20</span><span>🎯190</span>
+                    </div>
+                </div>
+                <div class="hero-card" data-hero="ninja">
+                    <div class="hero-icon" style="background:#ff475722;border-color:#ff4757">🗡️</div>
+                    <div class="hero-name" style="color:#ff4757">忍术忍者</div>
+                    <div class="hero-desc">近战刺客 · 闪现强化</div>
+                    <div class="hero-bonus">暴击+15% · 闪现更远更快 · 消耗更低</div>
+                    <div class="hero-stats">
+                        <span>❤️200</span><span>💎120</span><span>⚔️18~28</span><span>🎯140</span>
+                    </div>
+                </div>
+                <div class="hero-card" data-hero="psyker">
+                    <div class="hero-icon" style="background:#a855f722;border-color:#a855f7">🔮</div>
+                    <div class="hero-name" style="color:#a855f7">超能力者</div>
+                    <div class="hero-desc">念力控场 · 大范围</div>
+                    <div class="hero-bonus">攻击扩散·MP回复翻倍·攻击范围最远</div>
+                    <div class="hero-stats">
+                        <span>❤️220</span><span>💎250</span><span>⚔️10~16</span><span>🎯220</span>
+                    </div>
+                </div>
+            </div>
+            <button id="hero-confirm" class="hero-confirm-btn" disabled>选择角色后开始</button>
+        </div>
+    </div>
+
+    <!-- 游戏容器 -->
+    <div id="game-container">
+        <canvas id="game-canvas" style="touch-action:none;"></canvas>
+    </div>
+
+    <!-- 暂停覆盖层 -->
+    <div id="pause-overlay">
+        <div class="pause-text">⏸ 已暂停</div>
+        <button class="pause-btn" id="resume-btn">▶ 继续</button>
+    </div>
+
+    <!-- 卡牌商店 -->
+    <div id="card-overlay">
+        <div class="card-panel">
+            <div class="card-title" id="card-title">🎴 卡牌商店</div>
+            <div class="card-subtitle" id="card-subtitle">打怪赚金币 → 刷卡 → 放入道具栏凑羁绊</div>
+            <div id="card-lock-hint" style="display:none;font-size:11px;color:#ffa502;text-align:center;margin-bottom:10px;padding:4px 8px;background:rgba(255,165,2,0.1);border-radius:4px;"></div>
+            <div class="card-container"></div>
+            <div style="display:flex;justify-content:center;gap:10px;margin-top:14px;">
+                <button id="abandon-btn" class="shop-btn">🔄 刷新 (💰30)</button>
+                <button id="close-shop-btn" class="shop-btn close-btn">✖ 关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏结束面板 -->
+    <div id="gameover-panel">
+        <div class="gameover-card">
+            <div class="gameover-title" id="go-title">💀 战斗结束</div>
+            <div class="gameover-subtitle">你的英雄倒下了</div>
+            <div class="gameover-stat"><span class="label">最终得分</span><span class="value" id="go-score">0</span></div>
+            <div class="gameover-stat"><span class="label">击杀数</span><span class="value" id="go-kills">0</span></div>
+            <div class="gameover-stat"><span class="label">最高波次</span><span class="value" id="go-wave">1</span></div>
+            <div class="gameover-stat"><span class="label">存活时间</span><span class="value" id="go-time">0:00</span></div>
+            <div class="gameover-stat"><span class="label">难度</span><span class="value" id="go-diff">难1</span></div>
+            <button id="retry-btn" onclick="restartGame()">🔄 再来一局</button>
+            <div class="gameover-tip">点击"再来一局"以相同难度重新开始</div>
+        </div>
+    </div>
+
+    <!-- 加载提示 -->
+    <div id="loading">⚔ 加载中...</div>
+
+    <!-- 羁绊面板 -->
+    <div id="bond-overlay" onclick="hideBondPanel()">
+        <div class="bond-panel" onclick="event.stopPropagation()">
+            <h2>📖 羁绊图鉴</h2>
+            <div id="bond-list"></div>
+        </div>
+    </div>
+    <!-- 羁绊详情面板 -->
+    <div id="bond-detail-overlay" onclick="hideBondDetail()">
+        <div class="bond-panel" onclick="event.stopPropagation()">
+            <div id="bond-detail"></div>
+        </div>
+    </div>
+    <!-- 宝箱增益卡面板 -->
+    <div id="chestCard-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;">
+        <div style="background:linear-gradient(135deg,#1a1a3a,#0a0a1a);border-radius:20px;padding:24px 20px;border:1px solid rgba(255,255,255,0.1);text-align:center;min-width:300px;max-width:90%;">
+            <div class="chestCard-title" style="font-size:20px;font-weight:bold;margin-bottom:16px;">📦 宝箱</div>
+            <div class="chestCard-container" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"></div>
+            <button onclick="closeChestCardOverlay()" style="margin-top:12px;padding:6px 24px;background:rgba(255,255,255,0.1);border:none;border-radius:6px;color:#888;font-size:12px;cursor:pointer;">暂不选择</button>
+        </div>
+    </div>
+
+    <!-- 道具详情面板 -->
+    <div id="eq-detail-overlay" onclick="hideEqDetail()" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:350;display:none;align-items:center;justify-content:center;">
+        <div onclick="event.stopPropagation()" style="background:linear-gradient(135deg,#1a1a3a,#0a0a1a);border-radius:16px;padding:24px;border:1px solid #ffd700;text-align:center;min-width:200px;">
+            <div id="eq-detail-icon" style="font-size:40px;margin-bottom:8px;">🗡️</div>
+            <div id="eq-detail-name" style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:4px;">道具名</div>
+            <div id="eq-detail-desc" style="font-size:13px;color:#aaa;margin-bottom:16px;">描述</div>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                <button id="eq-detail-pickup-btn" onclick="pickupGroundItem()" style="display:none;padding:8px 24px;background:rgba(34,197,94,0.2);border:1px solid #22c55e;border-radius:8px;color:#22c55e;font-size:13px;cursor:pointer;">📥 拾取</button>
+                <button id="eq-detail-drop-btn" onclick="dropEqItem()" style="padding:8px 24px;background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:8px;color:#ef4444;font-size:13px;cursor:pointer;">🗑️ 丢弃到地上</button>
+                <button onclick="hideEqDetail()" style="padding:8px 16px;background:rgba(255,255,255,0.1);border:none;border-radius:8px;color:#888;font-size:13px;cursor:pointer;">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js?v=4.3.1"></script>
+
+    <script>
+        // 使用内嵌配置（绕过服务器存档，确保 game.js 默认值生效）
+        window.EMBEDDED_LEVEL_DATA = {};
+        // 难度说明
+        const diffDescs = {
+            n1:{text:'怪物血量×0.5 | 刷怪间隔+50% | 怪物速度×0.6',cls:'_1'},
+            n2:{text:'怪物血量×0.6 | 刷怪间隔+40% | 怪物速度×0.7',cls:'_2'},
+            n3:{text:'怪物血量×0.75 | 刷怪间隔+20% | 怪物速度×0.8',cls:'_3'},
+            n4:{text:'怪物血量×0.9 | 刷怪间隔+10% | 怪物速度×0.9',cls:'_4'},
+            n5:{text:'怪物血量×1.0 | 刷怪间隔 标准 | 怪物速度×1.0',cls:'_5'},
+            n6:{text:'怪物血量×1.2 | 刷怪间隔-10% | 怪物速度×1.1',cls:'_6'},
+            n7:{text:'怪物血量×1.5 | 刷怪间隔-25% | 怪物速度×1.2',cls:'_7'},
+            n8:{text:'怪物血量×1.8 | 刷怪间隔-40% | 怪物速度×1.3',cls:'_8'},
+            n9:{text:'怪物血量×2.2 | 刷怪间隔-50% | 怪物速度×1.4',cls:'_9'},
+            n10:{text:'怪物血量×2.5 | 刷怪间隔-60% | 怪物速度×1.5',cls:'_10'},
+        };
+
+        document.getElementById('difficulty-select').addEventListener('change', function(){
+            var d = diffDescs[this.value];
+            var el = document.getElementById('difficulty-desc');
+            el.textContent = d.text; el.className = 'difficulty-info ' + d.cls;
+        });
+
+        // 开始游戏 → 选择角色
+        document.getElementById('start-btn').addEventListener('click', function(){
+            var diff = document.getElementById('difficulty-select').value;
+            window.SELECTED_DIFFICULTY = diff;
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('hero-select').classList.remove('hidden');
+        });
+
+        // 角色选择
+        var _selectedHero = null;
+        document.querySelectorAll('.hero-card').forEach(function(card){
+            card.addEventListener('click', function(){
+                document.querySelectorAll('.hero-card').forEach(function(c){c.classList.remove('selected');});
+                this.classList.add('selected');
+                _selectedHero = this.getAttribute('data-hero');
+                var btn = document.getElementById('hero-confirm');
+                var names = {xian:'修仙大仙',ninja:'忍术忍者',psyker:'超能力者'};
+                btn.disabled = false;
+                btn.textContent = '选择 ' + names[_selectedHero] + ' 开始作战';
+            });
+        });
+        document.getElementById('hero-confirm').addEventListener('click', function(){
+            if (!_selectedHero) return;
+            window.SELECTED_HERO = _selectedHero;
+            document.getElementById('hero-select').classList.add('hidden');
+            document.getElementById('game-container').classList.add('active');
+            if (typeof window.restartGameWithDifficulty === 'function') {
+                window.restartGameWithDifficulty(window.SELECTED_DIFFICULTY);
+            }
+        });
+
+        // 音效开关
+        var soundOn = true;
+        document.getElementById('sound-toggle').addEventListener('click', function(){
+            soundOn = !soundOn;
+            window._soundEnabled = soundOn;
+            document.getElementById('sound-icon').textContent = soundOn ? '🔊' : '🔇';
+            document.getElementById('sound-text').textContent = soundOn ? '音效已开启（点击关闭）' : '音效已关闭（点击开启）';
+        });
+
+        // 暂停/继续
+        document.getElementById('resume-btn').addEventListener('click', function(){
+            document.getElementById('pause-overlay').classList.remove('active');
+            if (typeof gameState !== 'undefined') gameState.isPaused = false;
+        });
+
+        // 监听暂停状态变化
+        setInterval(function(){
+            if (typeof gameState !== 'undefined') {
+                var overlay = document.getElementById('pause-overlay');
+                if (gameState.isPaused && !overlay.classList.contains('active')) {
+                    overlay.classList.add('active');
+                } else if (!gameState.isPaused && overlay.classList.contains('active')) {
+                    overlay.classList.remove('active');
+                }
+            }
+        }, 200);
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "imperfect-combat",
+  "version": "4.3.1",
+  "description": "不完美作战 - 类幸存者波次生存Roguelike游戏",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>不完美作战 - 配置编辑器</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      background:#0a0a1a;color:#fff;padding:0;min-height:100vh
+    }
+    .app{
+      max-width:480px;margin:0 auto;padding:16px;padding-bottom:80px
+    }
+    h1{font-size:20px;color:#00d4ff;margin-bottom:16px;text-align:center}
+    .section{
+      background:#1a1a2e;border-radius:10px;margin-bottom:12px;overflow:hidden
+    }
+    .section-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:14px 16px;cursor:pointer;user-select:none;
+      font-size:15px;font-weight:600;color:#e0e0ff
+    }
+    .section-header .arrow{transition:transform .2s;color:#666;font-size:12px}
+    .section-header.open .arrow{transform:rotate(180deg)}
+    .section-body{padding:0 16px 16px;display:none}
+    .section-body.open{display:block}
+    .param-group{margin-bottom:14px}
+    .param-group label{display:block;font-size:12px;color:#888;margin-bottom:4px}
+    .param-group .row{display:flex;align-items:center;gap:10px}
+    .param-group input[type="range"]{flex:1;height:6px;-webkit-appearance:none;appearance:none;
+      background:#333;border-radius:3px;outline:none}
+    .param-group input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;
+      width:18px;height:18px;border-radius:50%;background:#00d4ff;cursor:pointer}
+    .param-group .val{font-size:13px;color:#00d4ff;min-width:32px;text-align:right}
+    .param-group .hint{font-size:11px;color:#666;margin-top:2px}
+    .input-text{width:100%;padding:10px 12px;background:#252545;border:1px solid #444;
+      color:#fff;border-radius:6px;font-size:14px;outline:none}
+    .input-text:focus{border-color:#00d4ff}
+    .input-color{width:36px;height:36px;border-radius:6px;border:2px solid #444;padding:2px;cursor:pointer;background:transparent}
+    .inline-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .inline-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .card-item-edit{padding:10px;background:#252545;border-radius:6px;margin-bottom:8px}
+    .card-item-edit .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .card-item-edit input[type="text"]{background:#1a1a2e;border:1px solid #444;
+      color:#fff;padding:6px 8px;border-radius:4px;font-size:12px;flex:1;min-width:60px}
+    .card-item-edit input[type="text"]:focus{border-color:#00d4ff}
+    .btn{display:block;width:100%;padding:14px;border:none;border-radius:8px;
+      font-size:16px;font-weight:700;cursor:pointer;text-align:center;margin-top:16px}
+    .btn-primary{background:linear-gradient(135deg,#007bff,#00d4ff);color:#fff}
+    .btn-primary:active{transform:scale(0.98)}
+    .btn-success{background:linear-gradient(135deg,#28a745,#34ce57);color:#fff}
+    .btn-success:active{transform:scale(0.98)}
+    .version-list{margin-top:12px}
+    .version-item{padding:10px 14px;background:#252545;border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:13px}
+    .version-item:active{background:#353560}
+    .version-item .date{font-size:11px;color:#666}
+    .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px}
+    .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      background:rgba(0,0,0,0.85);color:#fff;padding:16px 24px;border-radius:10px;
+      font-size:14px;z-index:999;text-align:center;pointer-events:none;opacity:0;
+      transition:opacity .3s}
+    .toast.show{opacity:1}
+    .section-header .count{font-size:11px;color:#666;font-weight:400}
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>⚙️ 不完美作战 · 配置编辑器</h1>
+
+  <!-- 英雄属性 -->
+  <div class="section">
+    <div class="section-header open" onclick="toggle(this)">
+      🦸 英雄属性 <span class="arrow">▼</span>
+    </div>
+    <div class="section-body open" id="sec-hero">
+      <div class="param-group">
+        <label>最大生命 HP</label>
+        <div class="row"><input type="range" id="max-hp" min="50" max="500" value="200"><span class="val" id="max-hp-val">200</span></div>
+      </div>
+      <div class="param-group">
+        <label>最大法力 MP</label>
+        <div class="row"><input type="range" id="max-mp" min="20" max="300" value="100"><span class="val" id="max-mp-val">100</span></div>
+      </div>
+      <div class="param-group">
+        <label>MP 回复速度 (ms间隔)</label>
+        <div class="row"><input type="range" id="mp-regen-interval" min="50" max="500" value="200" step="10"><span class="val" id="mp-regen-interval-val">200</span></div>
+      </div>
+      <div class="param-group">
+        <label>移动速度</label>
+        <div class="row"><input type="range" id="walk-speed" min="1" max="10" value="4" step="0.5"><span class="val" id="walk-speed-val">4</span></div>
+      </div>
+      <div class="param-group">
+        <label>闪现距离</label>
+        <div class="row"><input type="range" id="dash-distance" min="30" max="300" value="150" step="10"><span class="val" id="dash-distance-val">150</span></div>
+      </div>
+      <div class="param-group">
+        <label>闪现消耗 MP</label>
+        <div class="row"><input type="range" id="dash-cost" min="5" max="80" value="30"><span class="val" id="dash-cost-val">30</span></div>
+      </div>
+      <div class="param-group">
+        <label>最小攻击力</label>
+        <div class="row"><input type="range" id="atk-min" min="5" max="80" value="15"><span class="val" id="atk-min-val">15</span></div>
+      </div>
+      <div class="param-group">
+        <label>最大攻击力</label>
+        <div class="row"><input type="range" id="atk-max" min="10" max="120" value="25"><span class="val" id="atk-max-val">25</span></div>
+      </div>
+      <div class="param-group">
+        <label>攻击射程</label>
+        <div class="row"><input type="range" id="atk-range" min="30" max="300" value="55"><span class="val" id="atk-range-val">55</span></div>
+      </div>
+      <div class="param-group">
+        <label>攻击间隔 (ms)</label>
+        <div class="row"><input type="range" id="atk-cooldown" min="100" max="2000" value="400" step="50"><span class="val" id="atk-cooldown-val">400</span></div>
+      </div>
+      <div class="param-group">
+        <label>弹道速度</label>
+        <div class="row"><input type="range" id="proj-speed" min="100" max="1200" value="400" step="20"><span class="val" id="proj-speed-val">400</span></div>
+      </div>
+      <div class="param-group">
+        <label>初始金币</label>
+        <div class="row"><input type="range" id="init-gold" min="0" max="500" value="0" step="10"><span class="val" id="init-gold-val">0</span></div>
+      </div>
+      <div class="param-group">
+        <label>波次间 HP 恢复</label>
+        <div class="row"><input type="range" id="hp-restore" min="0" max="200" value="30" step="5"><span class="val" id="hp-restore-val">30</span></div>
+      </div>
+      <div class="param-group">
+        <label>波次间 MP 恢复</label>
+        <div class="row"><input type="range" id="mp-restore" min="0" max="200" value="50" step="5"><span class="val" id="mp-restore-val">50</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 怪物类型 -->
+  <div class="section">
+    <div class="section-header open" onclick="toggle(this)">
+      👾 怪物类型 <span class="arrow">▼</span>
+    </div>
+    <div class="section-body open" id="sec-monsters">
+      <div id="monster-list"></div>
+      <button class="btn btn-primary" onclick="addMonsterType()" style="margin-top:8px;padding:10px;font-size:14px">+ 添加怪物类型</button>
+    </div>
+  </div>
+
+  <!-- 波次配置 -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      🌊 波次配置 <span class="arrow">▼</span>
+    </div>
+    <div class="section-body" id="sec-waves">
+      <div class="param-group">
+        <label>每波持续秒数</label>
+        <div class="row"><input type="range" id="wave-duration" min="10" max="60" value="25"><span class="val" id="wave-duration-val">25</span></div>
+        <div class="row"><span>每批出怪数</span><input type="range" id="spawn-count" min="1" max="10" value="1"><span class="val" id="spawn-count-val">1</span></div>
+      </div>
+      <div id="wave-list"></div>
+      <button class="btn btn-primary" onclick="addWave()" style="margin-top:8px;padding:10px;font-size:14px">+ 添加波次</button>
+    </div>
+  </div>
+
+  <!-- 卡牌配置 -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      🎴 卡牌羁绊 <span class="arrow">▼</span>
+    </div>
+    <div class="section-body" id="sec-cards">
+      <div class="param-group">
+        <label>刷新价格</label>
+        <div class="row"><input type="range" id="card-cost" min="10" max="100" value="30" step="5"><span class="val" id="card-cost-val">30</span></div>
+      </div>
+      <div class="param-group">
+        <label>每次展示卡牌数</label>
+        <div class="row"><input type="range" id="card-count" min="2" max="8" value="4"><span class="val" id="card-count-val">4</span></div>
+      </div>
+      <div class="param-group">
+        <label>技能栏上限</label>
+        <div class="row"><input type="range" id="max-bar" min="4" max="16" value="8"><span class="val" id="max-bar-val">8</span></div>
+      </div>
+      <div class="param-group">
+        <label>羁绊触发张数</label>
+        <div class="row"><input type="range" id="synergy-threshold" min="2" max="5" value="2"><span class="val" id="synergy-threshold-val">2</span></div>
+      </div>
+
+      <h3 style="font-size:14px;color:#888;margin:16px 0 8px">羁绊类型</h3>
+      <div id="synergy-list"></div>
+
+      <h3 style="font-size:14px;color:#888;margin:16px 0 8px">卡牌池</h3>
+      <p class="hint" style="font-size:11px;color:#666;margin-bottom:8px">每张卡需要指定类型和名称，图标用 emoji</p>
+      <div id="card-pool-list"></div>
+      <button class="btn btn-primary" onclick="addCard()" style="margin-top:8px;padding:10px;font-size:14px">+ 添加卡牌</button>
+    </div>
+  </div>
+
+  <!-- 操作 -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      📋 操作 <span class="arrow">▼</span>
+    </div>
+    <div class="section-body" id="sec-actions">
+      <div class="param-group">
+        <label>配置名称</label>
+        <input type="text" id="config-name" class="input-text" value="默认配置">
+      </div>
+      <button class="btn btn-primary" onclick="saveConfig()">💾 保存配置</button>
+      <button class="btn btn-success" onclick="loadLatest()">📥 读取最新配置</button>
+      <div class="version-list" id="version-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="editor.js?v=3.3"></script>
+</body>
+</html>
