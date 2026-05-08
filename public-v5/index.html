@@ -164,6 +164,16 @@ body{
         heroGrid.appendChild(card);
     });
 
+    // Enable button on initial hero selection
+    (function(){
+        var sel = document.querySelector('.hero-card.selected');
+        if (sel) {
+            document.getElementById('start-btn').disabled = false;
+            var nameEl = sel.querySelector('.hero-card-name');
+            document.getElementById('start-btn').textContent = '🎮 选择 ' + (nameEl ? nameEl.textContent : '英雄') + ' 开始';
+        }
+    })();
+
     // Start game
     document.getElementById('start-btn').addEventListener('click', function(){
         document.getElementById('start-screen').classList.add('hidden');
