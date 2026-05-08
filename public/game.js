@@ -2992,53 +2992,48 @@ function updatePlayerMovement(){
         if(Math.abs(p._kbY)<0.05) p._kbY=0;
     }
 
-    // 阻尼运动：速度衰减（无输入时自然减速）
+    // ===== 阻尼运动：→v += m(→F_推 + →F_阻)·dt，→p += →v·dt =====
     let _dt=Math.min(16/1000, 0.033); // 帧时间（秒）
     if(!p._vx) p._vx=0;
     if(!p._vy) p._vy=0;
+    let baseSpd = CONFIG.PLAYER_SPEED + (p.extraSpd||0);
 
+    // →F_推：向路径点加速（离目标越近推力越小，预判刹车）
     if(p.isMoving && gameState.currentPath.length>0 && gameState.currentPathIndex<gameState.currentPath.length){
-        // →F_推：向目标方向加速
-        let spd=(CONFIG.PLAYER_SPEED+(p.extraSpd||0))*4;
         let tn=gameState.currentPath[gameState.currentPathIndex];
         let dx=tn.x-p.x, dy=tn.y-p.y;
         let dist=Math.sqrt(dx*dx+dy*dy);
-
-        // 到达目标点
-        if(dist<4){
+        if(dist<3){
             gameState.currentPathIndex++;
             if(gameState.currentPathIndex>=gameState.currentPath.length){
                 p.isMoving=false; gameState.currentPathIndex=0;
             }
         } else {
             let nx=dx/dist, ny=dy/dist;
-            let pushForce=spd*5;
-            p._vx+=nx*pushForce*_dt;
-            p._vy+=ny*pushForce*_dt;
+            let approachRatio = Math.min(1, dist/25);
+            let pushForce = baseSpd * 8 * approachRatio;
+            p._vx += nx * pushForce * _dt;
+            p._vy += ny * pushForce * _dt;
         }
     }
 
-    // →F_阻：摩擦力/阻尼
-    let maxSpeed=(CONFIG.PLAYER_SPEED+(p.extraSpd||0))*6;
-    let currentSpeed=Math.sqrt(p._vx*p._vx+p._vy*p._vy);
-    if(currentSpeed>maxSpeed){
-        // 限速
-        let damp=0.85;
-        if(!p.isMoving) damp=0.8; // 停止时更强阻尼
-        p._vx*=damp;
-        p._vy*=damp;
-    } else if(currentSpeed>0.5){
-        // 自然阻尼
-        let damping=1-(3.5*_dt);
-        if(damping<0) damping=0;
-        if(!p.isMoving) damping*=0.85; // 到达后半段强阻尼
-        p._vx*=damping;
-        p._vy*=damping;
+    // →F_阻：速度阻尼——速度越快阻尼越强，自动定速
+    let maxSpd = baseSpd * 1.5;
+    let curSpd = Math.sqrt(p._vx*p._vx + p._vy*p._vy);
+    if(curSpd > 0.1){
+        let dampBase = 0.995;
+        if(!p.isMoving) dampBase = 0.92; // 到达后强阻尼急刹
+        let speedRatio = curSpd / maxSpd;
+        let dampFactor = 1 - (1-dampBase) * speedRatio;
+        dampFactor = Math.max(0.85, Math.min(0.999, dampFactor));
+        if(curSpd > maxSpd * 1.8) dampFactor = 0.82; // 超速急刹
+        p._vx *= dampFactor;
+        p._vy *= dampFactor;
     }
 
     // →p = →p + →v·dt
     let nxPos=p.x+p._vx*_dt, nyPos=p.y+p._vy*_dt;
-    if(Math.abs(p._vx*_dt)>0.05||Math.abs(p._vy*_dt)>0.05){
+    if(Math.abs(p._vx*_dt)>0.02||Math.abs(p._vy*_dt)>0.02){
         if(canMoveTo(nxPos,nyPos)){
             p.x=nxPos; p.y=nyPos;
         } else {
@@ -3048,10 +3043,7 @@ function updatePlayerMovement(){
         }
     }
 
-    // 完全静止时清空速度
-    if(!p.isMoving && currentSpeed<0.5){
-        p._vx=0; p._vy=0;
-    }
+    if(!p.isMoving && curSpd<0.15){ p._vx=0; p._vy=0; }
 }
 
 function updateMonsters(){
