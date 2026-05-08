@@ -1,0 +1,67 @@
+const fs = require('fs');
+const path = 'C:/Users/cpp72/.openclaw-autoclaw/workspace/imperfect-combat/public/game.html';
+let b = fs.readFileSync(path);
+
+// Global replace: find byte sequence and replace
+function replaceAll(find, repl) {
+  const f = Buffer.from(find);
+  const r = Buffer.from(repl);
+  let count = 0;
+  let pos = 0;
+  while (true) {
+    const idx = b.indexOf(f, pos);
+    if (idx < 0) break;
+    b = Buffer.concat([b.subarray(0, idx), r, b.subarray(idx + f.length)]);
+    count++;
+    pos = idx + r.length;
+  }
+  return count;
+}
+
+// 1. Fix garbled emojis: EF BF BD 3F (�?) in feature tags
+// "🤖自动攻击" has corrupted 🤖 
+const c1 = replaceAll(
+  [0xEF, 0xBF, 0xBD, 0x3F, 0xE8, 0x87, 0xAA, 0xE5, 0x8A, 0xA8, 0xE6, 0x94, 0xBB, 0xE5, 0x87, 0xBB],
+  [0xF0, 0x9F, 0xA4, 0x96, 0xE8, 0x87, 0xAA, 0xE5, 0x8A, 0xA8, 0xE6, 0x94, 0xBB, 0xE5, 0x87, 0xBB]
+);
+console.log('Fixed 自动攻击:', c1);
+
+// "⚡闪现" 
+const c2 = replaceAll(
+  [0xEF, 0xBF, 0xBD, 0x3F, 0xE9, 0x97, 0xAA, 0xE7, 0x8E, 0xB0],
+  [0xE2, 0x9A, 0xA1, 0xE9, 0x97, 0xAA, 0xE7, 0x8E, 0xB0]
+);
+console.log('Fixed 闪现:', c2);
+
+// 3. Version: v4.3.1 → v4.3.7 (in title and version-tag)
+const c3 = replaceAll([0x76, 0x34, 0x2E, 0x33, 0x2E, 0x31], [0x76, 0x34, 0x2E, 0x33, 0x2E, 0x37]);
+console.log('Fixed version v4.3.1→v4.3.7:', c3);
+
+// 4. Also fix "怪物血�?" → "怪物血量"
+const c4 = replaceAll(
+  [0xE6, 0x80, 0xAA, 0xE7, 0x89, 0xA9, 0xE8, 0xA1, 0x80, 0xEF, 0xBF, 0xBD, 0x3F],
+  [0xE6, 0x80, 0xAA, 0xE7, 0x89, 0xA9, 0xE8, 0xA1, 0x80, 0xE9, 0x87, 0x8F]
+);
+console.log('Fixed 怪物血量:', c4);
+
+// 5. Fix "开始作�?" → "开始作品" 
+const c5 = replaceAll(
+  [0xE5, 0xBC, 0x80, 0xE5, 0xA7, 0x8B, 0xE4, 0xBD, 0x9C, 0xEF, 0xBF, 0xBD, 0x3F],
+  [0xE5, 0xBC, 0x80, 0xE5, 0xA7, 0x8B, 0xE4, 0xBD, 0x9C, 0xE5, 0x93, 0x81]
+);
+console.log('Fixed 开始作品:', c5);
+
+// 6. Fix "🎵 音效" (check if sound emoji is corrupted)
+// Let's just search remaining EF BF BD patterns
+let remaining = 0;
+let pos = 0;
+while ((pos = b.indexOf(Buffer.from([0xEF, 0xBF, 0xBD]), pos)) >= 0) {
+  console.log('Remaining � at', pos, ':', b.subarray(Math.max(0,pos-5), pos+10).toString('hex'));
+  remaining++;
+  pos += 3;
+  if (remaining > 10) break;
+}
+console.log('Total remaining �:', remaining);
+
+fs.writeFileSync(path, b);
+console.log('\nWritten');
