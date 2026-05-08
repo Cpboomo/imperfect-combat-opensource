@@ -149,6 +149,11 @@ function combatKillMonster(monster) {
         itemsDropRandom(monster);
     }
 
+    // Boss drop: portal item
+    if ((monster.type === 'boss_mini' || monster.type === 'boss_final') && typeof wavesBossDropPortal === 'function') {
+        wavesBossDropPortal(monster.x, monster.y);
+    }
+
     emitParticles(monster.x, monster.y, {
         count: 15, color: monster.color || COLORS.WHITE, speed: 5, life: 25, shape: 'square'
     });

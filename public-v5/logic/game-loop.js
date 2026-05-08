@@ -78,6 +78,9 @@ function loopUpdate(dt) {
     // Camera
     if (typeof cameraUpdate === 'function' && G.player) { cameraFollow(G.player.x, G.player.y); cameraUpdate(); }
 
+    // Input state update (long-press detection)
+    if (typeof inputUpdate === 'function') inputUpdate();
+
     // Player movement (inertia glide)
     if (typeof combatUpdateMovement === 'function') combatUpdateMovement(dt);
 

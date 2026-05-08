@@ -72,8 +72,11 @@ function wavesUpdate(dt) {
         wavesSpawnMonster(entry.type, entry.isElite);
     }
 
-    // Wave end check
-    if (waveSpawnTimer >= waveDuration && G.monsters.length === 0 && waveSpawnQueue.length === 0) {
+    // Wave end check: all spawned + all dead → next wave; timeout as safeguard
+    var allSpawned = waveSpawnQueue.length === 0;
+    var allDead = G.monsters.length === 0;
+    var timeUp = waveSpawnTimer >= waveDuration;
+    if ((allSpawned && allDead) || timeUp) {
         waveIsActive = false;
         wavesNextWave();
     }

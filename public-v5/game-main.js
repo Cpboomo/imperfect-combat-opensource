@@ -48,6 +48,15 @@ function gameRouteClick(wx, wy) {
     var sx = wx - cam.x;
     var sy = wy - cam.y;
 
+    // Check card draw button
+    if (window._drawCardRect) {
+        var dr = window._drawCardRect;
+        if (sx >= dr.x && sx <= dr.x + dr.w && sy >= dr.y && sy <= dr.y + dr.h) {
+            cardsDraw();
+            return;
+        }
+    }
+
     // Check card slot clicks
     for (var i = 0; i < 6; i++) {
         var cardSx = UI.CARD_START_X + i * (UI.CARD_W + UI.CARD_GAP);
@@ -197,8 +206,13 @@ function gameRestart() {
     waveSpawnQueue = [];
     cardsDragCard = null;
     G.overflowReplacing = -1;
+    window._retryRect = null;
+    window._drawCardRect = null;
+    window._talentRects = null;
+    window._cultivationL2Rects = null;
     cameraFollow(G.player.x, G.player.y, true);
     cameraUpdate();
+    loopLastTime = performance.now();
     wavesStart();
 }
 
@@ -212,8 +226,13 @@ function gameStart(difficulty, heroId) {
     waveSpawnQueue = [];
     cardsDragCard = null;
     G.overflowReplacing = -1;
+    window._retryRect = null;
+    window._drawCardRect = null;
+    window._talentRects = null;
+    window._cultivationL2Rects = null;
     cameraFollow(G.player.x, G.player.y, true);
     cameraUpdate();
+    loopLastTime = performance.now();
     wavesStart();
     if (!loopRunning) loopStart();
 }

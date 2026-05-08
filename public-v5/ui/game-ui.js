@@ -57,8 +57,8 @@ function renderHUD(ctx) {
     drawOutlineText(ctx, 'MP ' + Math.round(p.mp), UI.HP_BAR_X + UI.BAR_W/2, UI.HP_BAR_Y + UI.BAR_H + 10, 8, COLORS.CYAN, COLORS.BG_DARK, 'center');
 
     // Wave / Chapter
-    var topRight = 280;
-    drawOutlineText(ctx, '第' + G.chapter + '关 第' + G.wave + '波', topRight, 15, 13, COLORS.WHITE, COLORS.BG_DARK, 'left');
+    var topRight = 240;
+    drawOutlineText(ctx, '第' + G.chapter + '章 第' + G.wave + '波', topRight, 15, 13, COLORS.WHITE, COLORS.BG_DARK, 'left');
 
     // Gold
     drawOutlineText(ctx, '💰 ' + G.gold, topRight, 35, 13, COLORS.GOLD, COLORS.BG_DARK, 'left');
@@ -70,6 +70,18 @@ function renderHUD(ctx) {
     var mins = Math.floor(G.time / 60);
     var secs = Math.floor(G.time % 60);
     drawOutlineText(ctx, '⏱ ' + (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs, topRight, 72, 11, COLORS.WHITE_40, COLORS.BG_DARK, 'left');
+
+    // Card draw button
+    var canDraw = G.gold >= CARD_DRAW_COST && stateFindEmptyCardSlot() >= 0;
+    if (canDraw && G.overflowReplacing < 0) {
+        var btnX = 190, btnY = UI.CARD_Y, btnW = 60, btnH = UI.CARD_H;
+        strokeRoundRect(ctx, btnX, btnY, btnW, btnH, 6, COLORS.GOLD, 2);
+        drawOutlineText(ctx, '抽卡', btnX + btnW/2, btnY + btnH/2 - 6, 12, COLORS.GOLD, COLORS.BG_DARK, 'center');
+        drawOutlineText(ctx, '💰' + CARD_DRAW_COST, btnX + btnW/2, btnY + btnH/2 + 12, 9, COLORS.GOLD, COLORS.BG_DARK, 'center');
+        window._drawCardRect = {x:btnX, y:btnY, w:btnW, h:btnH};
+    } else if (G.overflowReplacing < 0) {
+        drawOutlineText(ctx, '💰不足', 220, UI.CARD_Y + UI.CARD_H/2, 10, COLORS.WHITE_20, COLORS.BG_DARK, 'center');
+    }
 }
 
 // ==================== 6格悬浮卡槽 ====================
