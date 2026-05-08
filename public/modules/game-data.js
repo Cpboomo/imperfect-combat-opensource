@@ -16,7 +16,7 @@
 
 // ==================== 核心配置 ====================
 const CONFIG = {
-    VERSION: 'v4.3.1',
+    VERSION: 'v4.3.7',
     GRID_COLS: 18, GRID_ROWS: 32, GRID_SIZE: 40,
     BASE_WIDTH: 360, BASE_HEIGHT: 640,
     PLAYER_SIZE: 28,
