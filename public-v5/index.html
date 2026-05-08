@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>不完美作战 v5.0</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    background:#0a0a1a;color:#fff;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100vh;min-height:100dvh;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;-webkit-user-select:none;
+    touch-action:manipulation;
+}
+
+/* === Start Screen === */
+#start-screen{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:linear-gradient(135deg,#0a0a1a 0%,#1a1a3a 50%,#0a0a1a 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    z-index:1000;transition:opacity 0.4s,transform 0.4s;
+}
+#start-screen.hidden{opacity:0;pointer-events:none;transform:scale(1.05)}
+.game-title{
+    font-size:clamp(28px,8vw,42px);font-weight:900;
+    background:linear-gradient(135deg,#00d4ff,#8b5cf6,#ff69b4);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    margin-bottom:4px;letter-spacing:2px;
+}
+.game-subtitle{font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:8px}
+.version-tag{padding:2px 10px;border-radius:10px;font-size:10px;background:rgba(139,92,246,0.2);color:#8b5cf6;border:1px solid rgba(139,92,246,0.3);margin-bottom:20px}
+
+/* Difficulty */
+.diff-section{background:rgba(255,255,255,0.04);border-radius:16px;padding:20px 24px;border:1px solid rgba(255,255,255,0.08);margin-bottom:16px;min-width:280px;text-align:center}
+.diff-label{font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:10px}
+.diff-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.diff-btn{padding:8px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer}
+.diff-btn:hover,.diff-btn.selected{background:rgba(0,212,255,0.15);border-color:#00d4ff;color:#00d4ff}
+.diff-desc{margin-top:10px;font-size:10px;color:rgba(255,255,255,0.35)}
+
+/* Hero selection */
+.hero-section{background:rgba(255,255,255,0.04);border-radius:16px;padding:16px 20px;border:1px solid rgba(255,255,255,0.08);margin-bottom:16px;min-width:280px}
+.hero-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.hero-card{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);cursor:pointer;text-align:center;transition:all 0.2s}
+.hero-card:hover,.hero-card.selected{border-color:#00d4ff;background:rgba(0,212,255,0.08)}
+.hero-card.selected{box-shadow:0 0 12px rgba(0,212,255,0.2)}
+.hero-card-icon{font-size:28px;margin-bottom:4px}
+.hero-card-name{font-size:13px;font-weight:bold}
+.hero-card-type{font-size:9px;color:rgba(255,255,255,0.35);margin-top:2px}
+.hero-card-desc{font-size:9px;color:rgba(255,255,255,0.5);margin-top:4px}
+
+/* Start button */
+.start-btn{
+    padding:12px 48px;border-radius:12px;
+    border:none;background:linear-gradient(135deg,#8b5cf6,#00d4ff);
+    color:#fff;font-size:16px;font-weight:bold;cursor:pointer;
+    transition:transform 0.15s;
+}
+.start-btn:hover{transform:scale(1.03)}
+.start-btn:active{transform:scale(0.97)}
+
+/* === Game Container === */
+#game-container{position:fixed;top:0;left:0;width:100%;height:100%;display:none}
+#game-container.active{display:block}
+#game-canvas{width:100%;height:100%;touch-action:none}
+</style>
+</head>
+<body>
+<!-- Start Screen -->
+<div id="start-screen">
+    <h1 class="game-title">不完美作战</h1>
+    <p class="game-subtitle">IMPERFECT COMBAT</p>
+    <span class="version-tag">v5.0</span>
+
+    <div class="diff-section">
+        <div class="diff-label">🎯 选择难度</div>
+        <div class="diff-grid" id="diff-grid"></div>
+        <div class="diff-desc" id="diff-desc">怪物血量 ×1.0 | 怪物速度 ×1.0</div>
+    </div>
+
+    <div class="hero-section">
+        <div class="diff-label">⚔️ 选择英雄</div>
+        <div class="hero-grid" id="hero-grid"></div>
+    </div>
+
+    <button class="start-btn" id="start-btn" disabled>选择英雄后开始</button>
+</div>
+
+<!-- Game Container -->
+<div id="game-container">
+    <canvas id="game-canvas"></canvas>
+</div>
+
+<!-- Engine Layer -->
+<script src="engine/engine-core.js"></script>
+<script src="engine/engine-input.js"></script>
+<script src="engine/engine-audio.js"></script>
+<script src="engine/engine-render.js"></script>
+
+<!-- Data Layer -->
+<script src="gamedata/game-data.js"></script>
+<script src="gamedata/game-state.js"></script>
+
+<!-- Logic Layer -->
+<script src="logic/game-loop.js"></script>
+<script src="logic/game-combat.js"></script>
+<script src="logic/game-waves.js"></script>
+<script src="logic/game-cards.js"></script>
+<script src="logic/game-items.js"></script>
+<script src="logic/game-talents.js"></script>
+<script src="logic/game-heroes.js"></script>
+
+<!-- UI Layer -->
+<script src="ui/game-ui.js"></script>
+<script src="ui/game-render.js"></script>
+
+<!-- Entry -->
+<script src="game-main.js"></script>
+
+<script>
+(function(){
+    'use strict';
+    var selectedDiff = 'n5';
+    var selectedHero = 'immortal';
+
+    // Build difficulty buttons
+    var diffGrid = document.getElementById('diff-grid');
+    var diffNames = ['入门','简单','普通','进阶','标准','困难','地狱','深渊','炼狱','不可能'];
+    var diffColors = ['🟢','🟢','🟢','🔵','🔵','🔵','🟠','🟠','🔴','🔴'];
+    for (var i = 1; i <= 10; i++) {
+        (function(n){
+            var btn = document.createElement('div');
+            btn.className = 'diff-btn' + (n === 5 ? ' selected' : '');
+            btn.textContent = diffColors[n-1] + ' ' + diffNames[n-1];
+            btn.addEventListener('click', function(){
+                document.querySelectorAll('.diff-btn').forEach(function(b){b.classList.remove('selected')});
+                btn.classList.add('selected');
+                selectedDiff = 'n' + n;
+            });
+            diffGrid.appendChild(btn);
+        })(i);
+    }
+
+    // Build hero cards
+    var heroGrid = document.getElementById('hero-grid');
+    Object.keys(HEROES).forEach(function(key){
+        var h = HEROES[key];
+        var card = document.createElement('div');
+        card.className = 'hero-card' + (key === 'immortal' ? ' selected' : '');
+        card.innerHTML = '<div class="hero-card-icon">' + h.icon + '</div>' +
+            '<div class="hero-card-name" style="color:' + h.color + '">' + h.name + '</div>' +
+            '<div class="hero-card-type">' + (h.type === 'precision' ? '无UI·精准对子' : '带UI·修仙回收') + '</div>' +
+            '<div class="hero-card-desc">' + h.desc + '</div>';
+        card.addEventListener('click', function(){
+            document.querySelectorAll('.hero-card').forEach(function(c){c.classList.remove('selected')});
+            card.classList.add('selected');
+            selectedHero = key;
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('start-btn').textContent = '🎮 选择 ' + h.name + ' 开始';
+        });
+        heroGrid.appendChild(card);
+    });
+
+    // Start game
+    document.getElementById('start-btn').addEventListener('click', function(){
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-container').classList.add('active');
+        gameMain();
+        gameStart(selectedDiff, selectedHero);
+    });
+})();
+</script>
+</body>
+</html>
