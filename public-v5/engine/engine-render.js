@@ -36,6 +36,7 @@ var COLORS = {
     BLACK_70:      'rgba(0,0,0,0.70)',
     GOLD:          '#ffd700',
     GOLD_DIM:      'rgba(255,215,0,0.3)',
+    GOLD_20:       'rgba(255,215,0,0.2)',
     SILVER:        '#c0c0c0',
     BRONZE:        '#cd7f32'
 };

@@ -47,6 +47,8 @@ function gameRouteClick(wx, wy) {
     var cam = cameraGetPos();
     var sx = wx - cam.x;
     var sy = wy - cam.y;
+    var cw = engineCanvas.width, ch = engineCanvas.height;
+    var L = uiLayout(cw, ch);
 
     // Check card draw button
     if (window._drawCardRect) {
@@ -57,24 +59,27 @@ function gameRouteClick(wx, wy) {
         }
     }
 
-    // Check card slot clicks
+    // Check card slot clicks (centered bottom row)
+    var cardTotalW = 6 * L.cardW + 5 * L.cardGap;
+    var cardStartX = (cw - cardTotalW) / 2;
     for (var i = 0; i < 6; i++) {
-        var cardSx = UI.CARD_START_X + i * (UI.CARD_W + UI.CARD_GAP);
-        if (sx >= cardSx && sx <= cardSx + UI.CARD_W && sy >= UI.CARD_Y && sy <= UI.CARD_Y + UI.CARD_H) {
+        var cardSx = cardStartX + i * (L.cardW + L.cardGap);
+        if (sx >= cardSx && sx <= cardSx + L.cardW && sy >= L.cardY && sy <= L.cardY + L.cardH) {
             if (G.overflowReplacing >= 0) {
                 cardsReplaceSlot(i);
                 return;
             }
-            // Click card: show sell option or use
             gameCardClick(i);
             return;
         }
     }
 
-    // Check item slot clicks
+    // Check item slot clicks (centered, above cards)
+    var itemTotalW = 5 * L.itemW + 4 * L.itemGap;
+    var itemStartX = (cw - itemTotalW) / 2;
     for (i = 0; i < 5; i++) {
-        var itemSx = UI.ITEM_START_X + i * (UI.ITEM_W + UI.ITEM_GAP);
-        if (sx >= itemSx && sx <= itemSx + UI.ITEM_W && sy >= UI.ITEM_Y && sy <= UI.ITEM_Y + UI.ITEM_H) {
+        var itemSx = itemStartX + i * (L.itemW + L.itemGap);
+        if (sx >= itemSx && sx <= itemSx + L.itemW && sy >= L.itemY && sy <= L.itemY + L.itemH) {
             gameItemClick(i);
             return;
         }
@@ -91,8 +96,9 @@ function gameRouteClick(wx, wy) {
         }
     }
 
-    // Check blueprint toggle (top-right area)
-    if (sx > 310 && sy < 80) {
+    // Check blueprint toggle (top-right area, responsive)
+    var blueprintToggleX = cw - 40 * L.scale;
+    if (sx > blueprintToggleX && sy < 50 * L.scale) {
         G.blueprintOpen = !G.blueprintOpen;
         return;
     }
@@ -160,13 +166,16 @@ function gameCheckRetry(wx, wy) {
 // ==================== Input Handlers ====================
 
 function gameOnDragStart(wx, wy) {
-    // Check if dragging from item slot
     var cam = cameraGetPos();
+    var cw = engineCanvas.width;
+    var L = uiLayout(cw, engineCanvas.height);
+    var clickSx = wx - cam.x;
+    var clickSy = wy - cam.y;
+    var itemTotalW = 5 * L.itemW + 4 * L.itemGap;
+    var itemStartX = (cw - itemTotalW) / 2;
     for (var i = 0; i < 5; i++) {
-        var sx = UI.ITEM_START_X + i * (UI.ITEM_W + UI.ITEM_GAP);
-        var clickSx = wx - cam.x;
-        var clickSy = wy - cam.y;
-        if (clickSx >= sx && clickSx <= sx + UI.ITEM_W && clickSy >= UI.ITEM_Y && clickSy <= UI.ITEM_Y + UI.ITEM_H) {
+        var sx = itemStartX + i * (L.itemW + L.itemGap);
+        if (clickSx >= sx && clickSx <= sx + L.itemW && clickSy >= L.itemY && clickSy <= L.itemY + L.itemH) {
             G.draggedItemIndex = i;
             return;
         }
@@ -182,12 +191,15 @@ function gameOnDragEnd() {
 }
 
 function gameOnLongPress(wx, wy) {
-    // Long press on card → sell
     var cam = cameraGetPos();
     var sx = wx - cam.x, sy = wy - cam.y;
+    var cw = engineCanvas.width;
+    var L = uiLayout(cw, engineCanvas.height);
+    var cardTotalW = 6 * L.cardW + 5 * L.cardGap;
+    var cardStartX = (cw - cardTotalW) / 2;
     for (var i = 0; i < 6; i++) {
-        var cardSx = UI.CARD_START_X + i * (UI.CARD_W + UI.CARD_GAP);
-        if (sx >= cardSx && sx <= cardSx + UI.CARD_W && sy >= UI.CARD_Y && sy <= UI.CARD_Y + UI.CARD_H) {
+        var cardSx = cardStartX + i * (L.cardW + L.cardGap);
+        if (sx >= cardSx && sx <= cardSx + L.cardW && sy >= L.cardY && sy <= L.cardY + L.cardH) {
             cardsSell(i);
             return;
         }
