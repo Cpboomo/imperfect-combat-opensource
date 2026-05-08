@@ -2992,58 +2992,55 @@ function updatePlayerMovement(){
         if(Math.abs(p._kbY)<0.05) p._kbY=0;
     }
 
-    // ===== 阻尼运动：→v += m(→F_推 + →F_阻)·dt，→p += →v·dt =====
-    let _dt=Math.min(16/1000, 0.033); // 帧时间（秒）
+    // ===== 高响应惯性移动：快加速 → 定速巡航 → 到达微滑 =====
+    let _dt=Math.min(16/1000, 0.033);
     if(!p._vx) p._vx=0;
     if(!p._vy) p._vy=0;
     let baseSpd = CONFIG.PLAYER_SPEED + (p.extraSpd||0);
+    let targetSpd = baseSpd * 2.5; // 巡航速度（补偿加减速损失）
 
-    // →F_推：向路径点加速（离目标越近推力越小，预判刹车）
     if(p.isMoving && gameState.currentPath.length>0 && gameState.currentPathIndex<gameState.currentPath.length){
         let tn=gameState.currentPath[gameState.currentPathIndex];
         let dx=tn.x-p.x, dy=tn.y-p.y;
         let dist=Math.sqrt(dx*dx+dy*dy);
-        if(dist<3){
+
+        // 到达路径点
+        if(dist<2){
             gameState.currentPathIndex++;
             if(gameState.currentPathIndex>=gameState.currentPath.length){
                 p.isMoving=false; gameState.currentPathIndex=0;
             }
         } else {
+            // 目标速度 = 方向单位向量 × 巡航速度
             let nx=dx/dist, ny=dy/dist;
-            let approachRatio = Math.min(1, dist/25);
-            let pushForce = baseSpd * 8 * approachRatio;
-            p._vx += nx * pushForce * _dt;
-            p._vy += ny * pushForce * _dt;
+            let tVx = nx * targetSpd;
+            let tVy = ny * targetSpd;
+
+            // 快加速/减速到目标速度（lerp 系数大 = 响应快）
+            let lerpFactor = 0.15; // 越大越灵敏
+            p._vx += (tVx - p._vx) * lerpFactor;
+            p._vy += (tVy - p._vy) * lerpFactor;
         }
     }
 
-    // →F_阻：速度阻尼——速度越快阻尼越强，自动定速
-    let maxSpd = baseSpd * 1.5;
-    let curSpd = Math.sqrt(p._vx*p._vx + p._vy*p._vy);
-    if(curSpd > 0.1){
-        let dampBase = 0.995;
-        if(!p.isMoving) dampBase = 0.92; // 到达后强阻尼急刹
-        let speedRatio = curSpd / maxSpd;
-        let dampFactor = 1 - (1-dampBase) * speedRatio;
-        dampFactor = Math.max(0.85, Math.min(0.999, dampFactor));
-        if(curSpd > maxSpd * 1.8) dampFactor = 0.82; // 超速急刹
-        p._vx *= dampFactor;
-        p._vy *= dampFactor;
+    // 到达后惯性滑行
+    if(!p.isMoving){
+        let curSpd = Math.sqrt(p._vx*p._vx + p._vy*p._vy);
+        if(curSpd < 0.15){ p._vx=0; p._vy=0; }
+        else { p._vx *= 0.85; p._vy *= 0.85; } // 惯性衰减
     }
 
-    // →p = →p + →v·dt
+    // 坐标更新
     let nxPos=p.x+p._vx*_dt, nyPos=p.y+p._vy*_dt;
-    if(Math.abs(p._vx*_dt)>0.02||Math.abs(p._vy*_dt)>0.02){
+    if(Math.abs(p._vx*_dt)>0.01||Math.abs(p._vy*_dt)>0.01){
         if(canMoveTo(nxPos,nyPos)){
             p.x=nxPos; p.y=nyPos;
         } else {
-            p._vx*=0.5; p._vy*=0.5; // 碰墙减速
+            p._vx*=0.4; p._vy*=0.4; // 碰墙减速
             if(canMoveTo(nxPos,p.y)) p.x=nxPos;
             if(canMoveTo(p.x,nyPos)) p.y=nyPos;
         }
     }
-
-    if(!p.isMoving && curSpd<0.15){ p._vx=0; p._vy=0; }
 }
 
 function updateMonsters(){
