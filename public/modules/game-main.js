@@ -1,7 +1,16 @@
+/**
+ * game-main.js — 主循环与入口
+ * @module game-main
+ * @description Game loop (requestAnimationFrame), event binding, canvas resize, data loading,
+ *   initialization, tower system, bonds, chest UI, time freeze ability.
+ *   Depends on: game-data.js, game-logic.js, game-render.js
+ */
+
 // game-main.js — Game loop, events, init, tower, bonds, chest, time freeze
 
 // ==================== 游戏循环 ====================
 let lastFrameTime=0;
+/** Main requestAnimationFrame loop. Drives update → render cycle at 60fps with delta-time. @param {number} timestamp */
 function gameLoop(timestamp){
     try {
         let dt=lastFrameTime?Math.min(timestamp-lastFrameTime,50):16;
@@ -102,6 +111,7 @@ function gameLoop(timestamp){
     requestAnimationFrame(gameLoop);
 }
 
+/** Per-frame player movement update. Lerp-based velocity following with inertia glide (v4.3.7). */
 function updatePlayerMovement(){
     if(!gameState.player) return;
     let p=gameState.player;
@@ -164,6 +174,7 @@ function updatePlayerMovement(){
     }
 }
 
+/** Per-frame monster AI update. Movement toward player, attack timers, status effects. */
 function updateMonsters(){
     let now=Date.now();
     let tf=gameState._timeFreeze&&gameState._timeFreeze.active;

@@ -1,3 +1,10 @@
+/**
+ * game-data.js — 配置与数据层
+ * @module game-data
+ * @description All game configuration, hero classes, card pools, cultivation data, and game state init.
+ *   Loaded first — no dependencies on other modules.
+ */
+
 // game-data.js — Config, heroes, audio, boss configs, game state
 
 /**
@@ -203,6 +210,7 @@ function getRandomCards(count){
 }
 
 // 检查羁绊（技能栏中同类型≥2张则触发）
+/** Check card synergy thresholds (3+ same-family cards) and apply bonus effects. */
 function checkSynergy(){
     let sb = gameState.skillBar || [];
     let counts = {};

@@ -1,3 +1,11 @@
+/**
+ * game-render.js — 渲染层
+ * @module game-render
+ * @description All Canvas draw functions: grid, walls, monsters, player, UI bars, particles,
+ *   cultivation HUD, AI bot visualization. Pure rendering — no game state mutation.
+ *   Depends on: game-data.js, game-logic.js
+ */
+
 // game-render.js — All draw functions + cultivation UI + AI bot
 
 // ==================== 渲染系统 ====================
@@ -64,6 +72,7 @@ function drawPortal(){
     }
 }
 
+/** Main render loop. Compositing layer order: grid → walls → items → monsters → player → UI → particles. */
 function render() {
     ctx.fillStyle = CONFIG.BG_COLOR;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -102,6 +111,7 @@ function drawWalls(){
         }
     }
 }
+/** Draw all alive monsters with health bars, status effect indicators, and hit flash. */
 function drawMonsters(){
     for(let m of gameState.monsters){
         m.draw(ctx);
@@ -164,6 +174,7 @@ function drawParticles(){
     for(let t of gameState.floatingTexts) if(t&&typeof t.draw==='function') t.draw(ctx);
     for(let p of gameState.projectiles) if(p&&typeof p.draw==='function') p.draw(ctx);
 }
+/** Draw player sprite with hero-specific effects (cultivation sword glow, dash trail). */
 function drawPlayer(){
     if(!gameState.player) return;
     let p=gameState.player;
@@ -268,6 +279,7 @@ function drawResourceBars(){
     ctx.textBaseline='alphabetic';
 }
 function drawPlayerBars(){}
+/** Draw HUD: HP/MP bars, wave counter, gold, score, skill bar, mini-map. */
 function drawUI(){
     if(gameState.isGameOver) return;
     drawResourceBars();
@@ -678,6 +690,7 @@ function findDashSafeSpot(fx,fy,angle){
 }
 
 // ==================== AI Bot 系统 ====================
+/** AI Bot main loop. Autonomous pathfinding, combat, dash evasion, and item pickup. */
 function updateAI(){
     if(!gameState.player||gameState.isGameOver){
         // 自动复活 — 保存AI状态并在复活后恢复

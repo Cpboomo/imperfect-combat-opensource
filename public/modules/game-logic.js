@@ -1,3 +1,11 @@
+/**
+ * game-logic.js — 游戏逻辑层
+ * @module game-logic
+ * @description Coordinate transforms, A* pathfinding, player movement/dash, combat, wave spawning,
+ *   card/shop logic, cultivation progression. All gameplay systems.
+ *   Depends on: game-data.js
+ */
+
 // game-logic.js — Coordinates, pathfinding, movement, combat, waves, cards, cultivation
 
 // ==================== Canvas ====================
@@ -38,6 +46,7 @@ function getNeighbors(node) {
         if(nx>=0&&nx<CONFIG.GRID_COLS&&ny>=0&&ny<CONFIG.GRID_ROWS&&!isWallByGrid(nx,ny)) ns.push(new ANode(nx,ny));
     } return ns;
 }
+/** A* pathfinding from (sx,sy) to (ex,ey). Returns array of {x,y} grid nodes or null if unreachable. */
 function findPath(sx,sy,ex,ey) {
     if(isWallByGrid(ex,ey)){ let nr=findNearestWalkable(ex,ey); if(nr){ex=nr.x;ey=nr.y;}else return []; }
     let sn=new ANode(sx,sy), en=new ANode(ex,ey), ol=[sn], cl=[], nm=new Map();
@@ -128,6 +137,7 @@ function findNearestValidPosition(tx,ty,maxR){
         }
     return {x:gameState.player.x,y:gameState.player.y};
 }
+/** Execute dash from (fx,fy) to (tx,ty) if valid. Checks MP cost and collision-free path. @returns {boolean} */
 function performDash(fx,fy,tx,ty){
     if(!gameState.player||!canDash()) return false;
     gameState.player.mp-=CONFIG.DASH_COST;
@@ -150,6 +160,7 @@ function getAttackDamage(){
 }
 function distance(a,b){ return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2); }
 
+/** Auto-target nearest monster within ATTACK_RANGE and fire a projectile. Called each frame. */
 function attackNearestMonster(){
     if(!gameState.player||gameState.isGameOver) return;
     let now=Date.now();
@@ -252,6 +263,7 @@ function attackNearestMonster(){
         gameState.particles.push(new Particle(nearest.x,nearest.y,'#ffdd59',250,3,3));
 }
 
+/** Remove monster, grant gold + score, spawn death particles and loot drops. @param {Object} monster */
 function killMonster(monster){
     monster.alive=false;
     let idx=gameState.monsters.indexOf(monster);
@@ -284,6 +296,7 @@ function killMonster(monster){
     }
 }
 
+/** Collision check: player vs monsters. Applies contact damage, knockback, shield absorption. */
 function checkMonsterContact(){
     if(!gameState.player||gameState.isGameOver) return;
     let now=Date.now();
@@ -353,6 +366,7 @@ function getWaveMonsterCount(){
     return total || 8;
 }
 
+/** Initialize a new wave. Spawns initial monsters and schedules timed spawns. */
 function startWave(){
     gameState.wave++;
     if(gameState.wave>gameState.maxWave) gameState.maxWave=gameState.wave;
@@ -387,6 +401,7 @@ function startWave(){
     screenText('⚔ 第 '+gameState.wave+' 波 ⚔', '#ffdd59', 1500);
 }
 
+/** Complete current wave. Restore HP/MP, show card selection, trigger shop if applicable. */
 function endWave(){
     gameState.isBetweenWaves=true;
     gameState.betweenWaveTimer=0;
@@ -697,6 +712,7 @@ function hideCardShopUI(){
     closeShop();
 }
 
+/** Per-frame wave update. Handles timed spawns and wave-end detection. @param {number} now - timestamp */
 function updateWaveSystem(now){
     if(gameState.isGameOver) return;
 
@@ -1064,6 +1080,7 @@ function shareResult(channel){
     }
 }
 
+/** Game over sequence. Stops loop, shows result panel with stats (waves cleared, kills, time). */
 function triggerGameOver(){
     gameState.isGameOver=true;
     gameState.totalPlayTime=Math.floor((Date.now()-gameState.gameStartTime)/1000);
@@ -1074,6 +1091,7 @@ function formatTime(s){
     let m=Math.floor(s/60), sec=s%60;
     return m+':'+String(sec).padStart(2,'0');
 }
+/** Full game reset. Re-initializes all state, clears monsters/particles, re-runs init. */
 function restartGame(){
     let panel=document.getElementById('gameover-panel');
     if(panel) panel.classList.remove('active');
@@ -1159,6 +1177,7 @@ function restartGame(){
 }
 
 // ==================== 点击处理 ====================
+/** Unified click/touch handler. Routes to movement, UI buttons, tower, chest, and time freeze. */
 function handleCanvasClick(event){
     if(gameState.isGameOver) return;
     if(inputState.isProcessingClick) return;
@@ -1251,6 +1270,7 @@ function handleCanvasClick(event){
     inputState.lastClickTime=now; inputState.lastClickX=sx; inputState.lastClickY=sy;
 }
 
+/** Initiate player movement to world coordinates via A* pathfinding. @param {number} wx @param {number} wy */
 function moveToPosition(wx,wy){
     if(!gameState.player) return;
     let sg=worldToGrid(gameState.player.x,gameState.player.y);
@@ -1263,6 +1283,7 @@ function moveToPosition(wx,wy){
 
 // ==================== 相机 ====================
 // ==================== 修仙系统更新 ====================
+/** Cultivation system update. Manages study points, branch progression, and hidden sword unlock. @param {number} dt */
 function updateCultivation(dt){
     var cult = gameState.cultivation;
     if(!cult || !gameState.player) return;
