@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>v5 引擎层测试</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
+#test-canvas{border:1px solid rgba(255,255,255,0.1);touch-action:none}
+.info{position:fixed;top:10px;left:10px;color:rgba(255,255,255,0.6);font:11px monospace;pointer-events:none;line-height:1.4}
+</style>
+</head>
+<body>
+<canvas id="test-canvas"></canvas>
+<div class="info" id="info">Loading...</div>
+
+<script src="../engine/engine-core.js"></script>
+<script src="../engine/engine-input.js"></script>
+<script src="../engine/engine-audio.js"></script>
+<script src="../engine/engine-render.js"></script>
+
+<script>
+(function(){
+    'use strict';
+    var canvas = document.getElementById('test-canvas');
+    var ctx = canvas.getContext('2d');
+    var W, H;
+
+    // Init engines
+    engineInit(canvas);
+    var size = engineGetSize();
+    W = size.w; H = size.h;
+
+    // Simple keyboard tracking (not in engine-input yet)
+    var keysDown = {};
+    document.addEventListener('keydown', function(e){ keysDown[e.key] = true; });
+    document.addEventListener('keyup', function(e){ keysDown[e.key] = false; });
+
+    // Input callbacks
+    var clickPos = null;
+    inputInit(
+        function(wx, wy){ clickPos = {x:wx, y:wy}; }, // onClick
+        function(wx, wy){ console.log('dblclick',wx,wy); }, // onDoubleClick
+        function(wx, wy){ console.log('dragStart',wx,wy); }, // onDragStart
+        function(){ console.log('dragEnd'); }, // onDragEnd
+        function(wx, wy){ console.log('longPress',wx,wy); } // onLongPress
+    );
+
+    audioInit();
+
+    // Test data
+    var testX = ENGINE_MAP_W / 2;
+    var testY = ENGINE_MAP_H / 2;
+
+    // Emit particles every 2s
+    var particleTimer = 0;
+
+    function update(dt) {
+        // Movement
+        var speed = 4;
+        var dx = 0, dy = 0;
+        if (keysDown['ArrowLeft'] || keysDown['a']) dx = -speed;
+        if (keysDown['ArrowRight'] || keysDown['d']) dx = speed;
+        if (keysDown['ArrowUp'] || keysDown['w']) dy = -speed;
+        if (keysDown['ArrowDown'] || keysDown['s']) dy = speed;
+        testX += dx;
+        testY += dy;
+        testX = Math.max(40, Math.min(ENGINE_MAP_W - 40, testX));
+        testY = Math.max(40, Math.min(ENGINE_MAP_H - 40, testY));
+
+        // Camera
+        cameraFollow(testX, testY, false);
+        cameraUpdate();
+
+        // Particles
+        particleTimer += dt;
+        if (particleTimer > 2000) {
+            emitParticles(testX, testY, {count:8, color:'#00d4ff', speed:4, life:40, shape:'circle'});
+            particleTimer = 0;
+        }
+        updateParticles();
+
+        // Click particles + sound
+        if (clickPos) {
+            audioPlayClick();
+            emitParticles(clickPos.x, clickPos.y, {count:12, color:'#f59e0b', speed:5, life:25, shape:'square'});
+            clickPos = null;
+        }
+        
+        inputUpdate();
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, W, H);
+
+        var cam = cameraGetPos();
+        var shake = getShakeOffset();
+        ctx.save();
+        ctx.translate(shake.x, shake.y);
+
+        // Background
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(0, 0, W, H);
+
+        // Grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+        ctx.lineWidth = 1;
+        for (var gx = 0; gx <= ENGINE_CONFIG.GRID_COLS; gx++) {
+            var x = gx * ENGINE_CONFIG.GRID_SIZE - cam.x;
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+        }
+        for (var gy = 0; gy <= ENGINE_CONFIG.GRID_ROWS; gy++) {
+            var y = gy * ENGINE_CONFIG.GRID_SIZE - cam.y;
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        }
+
+        // Player
+        var sp = worldToScreen(testX, testY);
+        ctx.fillStyle = '#00d4ff';
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 15, 0, Math.PI*2);
+        ctx.fill();
+        drawGlow(ctx, sp.x, sp.y, 25, '#00d4ff', 0.2);
+
+        // Particles
+        drawParticles(ctx, cam.x, cam.y);
+
+        // Test UI
+        drawProgressBar(ctx, 20, 20, 200, 16, 0.7, '#22c55e');
+        drawOutlineText(ctx, '引擎层测试 — v5.0', 20, 50, 16, '#ffffff', '#0a0a1a');
+        drawMatteCard(ctx, 20, 70, 120, 80, '#8b5cf6', 3);
+        drawOutlineText(ctx, '卡牌测试', 80, 110, 11, '#ffffff', '#8b5cf6', 'center');
+        drawButton(ctx, 160, 70, 100, 36, '#00d4ff', '点我', 12);
+
+        // Info
+        document.getElementById('info').innerHTML =
+            'pos:(' + Math.round(testX) + ',' + Math.round(testY) + ')<br>' +
+            'cam:(' + Math.round(cam.x) + ',' + Math.round(cam.y) + ')<br>' +
+            'ptr:(' + Math.round(inputState.pointerWorldX) + ',' + Math.round(inputState.pointerWorldY) + ')<br>' +
+            'down:' + inputState.isPointerDown + ' drag:' + inputState.isDragging + ' long:' + inputState.isLongPress + '<br>' +
+            'particles:' + particles.length + ' muted:' + audioIsMuted();
+
+        ctx.restore();
+    }
+
+    function loop(ts) {
+        var now = performance.now();
+        var dt = Math.min(now - (loop.last || now), 33);
+        loop.last = now;
+        update(dt);
+        render();
+        requestAnimationFrame(loop);
+    }
+    loop.last = 0;
+    requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
