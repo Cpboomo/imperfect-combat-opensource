@@ -130,7 +130,7 @@ function combatKillMonster(monster) {
     stateAddGold(goldReward);
 
     var needTalent = stateAddKills(1);
-    if (needTalent) {
+    if (needTalent && typeof talentsOffer === 'function') {
         talentsOffer();
     }
 
@@ -145,7 +145,7 @@ function combatKillMonster(monster) {
     }
 
     // Drop check (items)
-    if (Math.random() < 0.15) {
+    if (Math.random() < 0.15 && typeof itemsDropRandom === 'function') {
         itemsDropRandom(monster);
     }
 

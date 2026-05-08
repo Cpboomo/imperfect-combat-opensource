@@ -11,11 +11,11 @@
 var GRoot = {}; // HTML root reference
 
 function gameMain() {
-    var canvas = document.getElementById('game-canvas');
-    if (!canvas) { console.error('Canvas not found'); return; }
+    var container = document.getElementById('game-container');
+    if (!container) { console.error('Container not found'); return; }
 
-    // Init engines
-    engineInit(canvas);
+    // Init engines (pass container element, not canvas)
+    engineInit(container);
 
     // Init input
     inputInit(
@@ -28,15 +28,7 @@ function gameMain() {
 
     audioInit();
 
-    // Init game state with defaults
-    stateInit('n5', 'immortal');
-
-    // Start camera follow
-    cameraFollow(G.player.x, G.player.y, true);
-    cameraUpdate();
-
-    // Start game loop
-    loopStart();
+    // Game state initialized by gameStart() — not here
 
     console.log('Imperfect Combat v5.0 ready');
 }
@@ -147,8 +139,11 @@ function gameItemClick(index) {
 
 function gameCheckRetry(wx, wy) {
     if (!window._retryRect) return;
+    var cam = cameraGetPos();
+    var sx = wx - cam.x;
+    var sy = wy - cam.y;
     var r = window._retryRect;
-    if (wx >= r.x && wx <= r.x + r.w && wy >= r.y && wy <= r.y + r.h) {
+    if (sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h) {
         gameRestart();
     }
 }

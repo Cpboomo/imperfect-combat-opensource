@@ -75,6 +75,12 @@ function loopUpdate(dt) {
     // Skip update if game over
     if (G.phase === 'over') return;
 
+    // Camera
+    if (typeof cameraUpdate === 'function' && G.player) { cameraFollow(G.player.x, G.player.y); cameraUpdate(); }
+
+    // Player movement (inertia glide)
+    if (typeof combatUpdateMovement === 'function') combatUpdateMovement(dt);
+
     // Combat
     if (typeof combatUpdate === 'function') combatUpdate(dt);
 
@@ -90,10 +96,7 @@ function loopUpdate(dt) {
     // Talents
     if (typeof talentsUpdate === 'function') talentsUpdate(dt);
 
-    // Cultivation
-    if (typeof cultivationUpdate === 'function') cultivationUpdate(dt);
-
-    // Heroes (ultimate pet, etc.)
+    // Heroes (cultivation + precision pet)
     if (typeof heroesUpdate === 'function') heroesUpdate(dt);
 
     // Particles
@@ -108,6 +111,8 @@ function loopRender() {
 
     var ctx = engineCtx;
     var size = engineGetSize();
+    if (size.w <= 0 || size.h <= 0) return; // Canvas not yet sized
+
     var cam = cameraGetPos();
     var shake = getShakeOffset();
 

@@ -166,7 +166,7 @@ function itemsUpdate(dt) {
         portal.lastSpawn += dt;
         if (portal.lastSpawn >= portal.spawnInterval) {
             portal.lastSpawn = 0;
-            wavesSpawnMonster(portal.type, false);
+            if (typeof wavesSpawnMonster === 'function') wavesSpawnMonster(portal.type, false);
         }
     }
 
