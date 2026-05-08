@@ -1,12 +1,11 @@
 {
   "name": "imperfect-combat",
-  "version": "4.3.1",
-  "description": "不完美作战 - 类幸存者波次生存 Roguelike 游戏",
+  "version": "5.0.0",
+  "description": "不完美作战 v5.0 - 类幸存者波次生存 Roguelike 游戏",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "editor": "echo Opening editor: http://localhost:8080/editor.html && node server.js"
+    "dev": "node server.js"
   },
   "keywords": [
     "roguelike",

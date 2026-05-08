@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>不完美作战 v5.0 - 配置编辑器</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      background:#0a0a1a;color:#e0e0e8;padding:0;min-height:100vh;
+      padding-top:56px;padding-bottom:72px
+    }
+
+    /* ====== Header ====== */
+    header{
+      position:fixed;top:0;left:0;right:0;z-index:100;
+      background:linear-gradient(135deg,#1a1a2e,#16213e);
+      padding:12px 16px;text-align:center;
+      border-bottom:1px solid #2a2a4a;
+    }
+    header h1{
+      font-size:17px;color:#00d4ff;font-weight:700;
+    }
+    header .subtitle{
+      font-size:11px;color:#666;margin-top:2px;
+    }
+    header .dirty-dot{
+      display:none;color:#ffa502;font-size:14px;margin-left:6px;
+    }
+
+    /* ====== Tab Nav ====== */
+    .tab-nav{
+      position:fixed;top:56px;left:0;right:0;z-index:99;
+      display:flex;overflow-x:auto;
+      background:#1a1a2e;border-bottom:1px solid #2a2a4a;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+    }
+    .tab-nav::-webkit-scrollbar{display:none}
+    .tab-btn{
+      flex-shrink:0;padding:10px 14px;font-size:12px;color:#888;
+      background:none;border:none;border-bottom:2px solid transparent;
+      cursor:pointer;white-space:nowrap;transition:all .2s;
+      font-family:inherit;
+    }
+    .tab-btn.active{
+      color:#00d4ff;border-bottom-color:#00d4ff;font-weight:600;
+    }
+    .tab-btn:active{background:rgba(0,212,255,0.1)}
+
+    /* ====== Editor Content ====== */
+    #editor-content{
+      padding:12px 10px;
+    }
+
+    .card-section{
+      background:#1a1a2e;border-radius:10px;margin-bottom:10px;overflow:hidden;
+      border:1px solid #2a2a4a;
+    }
+    .card-section-header{
+      display:flex;align-items:center;gap:8px;
+      padding:13px 14px;cursor:pointer;user-select:none;
+      font-size:14px;font-weight:600;color:#d0d0e8;
+      background:#1e1e36;
+    }
+    .card-section-header .arrow{transition:transform .2s;color:#666;font-size:11px;margin-left:auto}
+    .card-section-header.open .arrow{transform:rotate(180deg)}
+    .card-badge{
+      display:inline-block;padding:2px 8px;border-radius:10px;
+      font-size:10px;font-weight:600;color:#fff;
+    }
+    .card-section-body{padding:0 14px 14px;display:none}
+    .card-section-body.open{display:block}
+
+    .sub-section-header{
+      font-size:12px;color:#888;padding:12px 0 6px;
+      border-bottom:1px solid #2a2a4a;margin-bottom:8px;
+    }
+
+    /* ====== Form Fields ====== */
+    .param-group{margin-bottom:12px}
+    .param-group label{
+      display:block;font-size:11px;color:#888;margin-bottom:4px;
+    }
+    .param-group .row{display:flex;align-items:center;gap:10px}
+    .param-group .val{
+      font-size:13px;color:#00d4ff;min-width:48px;text-align:right;font-weight:600;
+    }
+
+    /* Range Slider */
+    input[type="range"]{
+      flex:1;height:6px;-webkit-appearance:none;appearance:none;
+      background:#2a2a4a;border-radius:3px;outline:none;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;width:22px;height:22px;
+      border-radius:50%;background:#00d4ff;cursor:pointer;
+      box-shadow:0 0 6px rgba(0,212,255,0.4);
+    }
+
+    /* Text Input */
+    .input-text{
+      width:100%;padding:10px 12px;background:#252545;
+      border:1px solid #444;color:#e0e0e8;
+      border-radius:6px;font-size:13px;outline:none;font-family:inherit;
+    }
+    .input-text:focus{border-color:#00d4ff}
+    .input-text-sm{
+      padding:7px 9px;background:#1a1a2e;border:1px solid #444;
+      color:#e0e0e8;border-radius:4px;font-size:12px;outline:none;
+      font-family:inherit;flex:1;min-width:60px;
+    }
+    .input-text-sm:focus{border-color:#00d4ff}
+
+    .input-number-sm{
+      width:58px;padding:6px 8px;background:#1a1a2e;border:1px solid #444;
+      color:#e0e0e8;border-radius:4px;font-size:12px;outline:none;
+      text-align:center;font-family:inherit;
+    }
+    .input-number-xs{
+      padding:5px 4px;background:#1a1a2e;border:1px solid #444;
+      color:#e0e0e8;border-radius:4px;font-size:11px;outline:none;
+      text-align:center;font-family:inherit;
+    }
+
+    .input-select-sm{
+      padding:6px 8px;background:#1a1a2e;border:1px solid #444;
+      color:#e0e0e8;border-radius:4px;font-size:11px;outline:none;
+      font-family:inherit;
+    }
+
+    /* Color Input */
+    .input-color{
+      width:40px;height:36px;border-radius:6px;border:2px solid #444;
+      padding:3px;cursor:pointer;background:transparent;
+    }
+
+    /* Toggle Switch */
+    .toggle-switch{position:relative;display:inline-block;width:48px;height:26px}
+    .toggle-switch input{opacity:0;width:0;height:0}
+    .toggle-slider{
+      position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;
+      background:#333;border-radius:26px;transition:.3s;
+      border:1px solid #555;
+    }
+    .toggle-slider:before{
+      content:"";position:absolute;height:18px;width:18px;
+      left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s;
+    }
+    input:checked + .toggle-slider{background:#00d4ff;border-color:#00a0c0}
+    input:checked + .toggle-slider:before{background:#fff;transform:translateX(22px)}
+
+    /* ====== Card Items ====== */
+    .card-item-edit{
+      padding:10px;background:#252545;border-radius:6px;margin-bottom:8px;
+      border:1px solid #30305a;
+    }
+    .card-item-title{
+      font-size:13px;color:#c0c0e8;margin-bottom:6px;font-weight:600;
+    }
+    .card-item-fields{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .rarity{
+      display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;
+      font-weight:700;color:#fff;
+    }
+    .r1{background:#666}.r2{background:#27ae60}.r3{background:#2980b9}
+    .r4{background:#8e44ad}.r5{background:#c0392b}
+
+    /* Monster wave rows */
+    .monster-wave-row{
+      display:flex;align-items:center;gap:8px;padding:6px 0;
+      border-bottom:1px solid #1e1e36;font-size:12px;
+    }
+    .monster-wave-type{flex:1;color:#c0c0e8;font-size:12px}
+    .monster-wave-field{display:flex;align-items:center;gap:4px}
+    .monster-wave-field label{font-size:10px;color:#666;margin:0}
+
+    /* ====== Footer Actions ====== */
+    .actions{
+      position:fixed;bottom:0;left:0;right:0;z-index:100;
+      background:#1a1a2e;border-top:1px solid #2a2a4a;
+      padding:8px 10px;
+    }
+    .actions-row{
+      display:flex;gap:6px;flex-wrap:wrap;
+    }
+    .btn-act{
+      flex:1;min-width:50px;padding:10px 6px;border:none;border-radius:8px;
+      font-size:11px;font-weight:700;cursor:pointer;text-align:center;
+      font-family:inherit;white-space:nowrap;transition:all .2s;
+    }
+    .btn-act:active{transform:scale(0.96)}
+    .btn-load{
+      background:linear-gradient(135deg,#2d6a4f,#40916c);color:#fff;
+    }
+    .btn-save{
+      background:linear-gradient(135deg,#007bff,#00d4ff);color:#fff;
+    }
+    .btn-export{
+      background:linear-gradient(135deg,#5a3e85,#7c5cbf);color:#fff;
+    }
+    .btn-import{
+      background:linear-gradient(135deg,#6b4c3b,#a0724e);color:#fff;
+    }
+    .btn-reset{
+      background:linear-gradient(135deg,#5a3030,#8b3a3a);color:#fff;
+    }
+
+    /* ====== Toast ====== */
+    .toast{
+      position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:rgba(0,0,0,0.9);color:#fff;padding:12px 22px;
+      border-radius:10px;font-size:13px;z-index:999;text-align:center;
+      pointer-events:none;opacity:0;transition:all .3s ease;
+      border:1px solid #333;white-space:nowrap;
+    }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .toast-success{border-color:#27ae60}
+    .toast-error{border-color:#e74c3c}
+    .toast-warn{border-color:#ffa502}
+    .toast-info{border-color:#00d4ff}
+
+    /* ====== Empty State ====== */
+    .empty-state{
+      text-align:center;padding:30px;color:#555;font-size:13px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚙️ 不完美作战 v5.0 <span style="font-size:12px;color:#888;font-weight:400">配置编辑器</span></h1>
+  <div class="subtitle">
+    修改配置后记得保存
+    <span class="dirty-dot" id="dirty-indicator">● 有未保存修改</span>
+  </div>
+</header>
+
+<nav class="tab-nav" id="tab-nav">
+  <button class="tab-btn active" data-tab="heroes" onclick="editorSwitchTab('heroes')">🦸 英雄</button>
+  <button class="tab-btn" data-tab="monsters" onclick="editorSwitchTab('monsters')">👹 怪物</button>
+  <button class="tab-btn" data-tab="waves" onclick="editorSwitchTab('waves')">🌊 波次</button>
+  <button class="tab-btn" data-tab="cards" onclick="editorSwitchTab('cards')">🃏 卡牌</button>
+  <button class="tab-btn" data-tab="talents" onclick="editorSwitchTab('talents')">⭐ 天赋</button>
+  <button class="tab-btn" data-tab="items" onclick="editorSwitchTab('items')">🎒 道具</button>
+  <button class="tab-btn" data-tab="constants" onclick="editorSwitchTab('constants')">⚙️ 常数</button>
+</nav>
+
+<main id="editor-content">
+  <div class="empty-state">⏳ 加载配置中...</div>
+</main>
+
+<footer class="actions">
+  <div class="actions-row">
+    <button class="btn-act btn-load" onclick="editorLoadFromServer()" title="从服务器加载最新配置">📡 加载</button>
+    <button class="btn-act btn-load" onclick="editorLoadFromUrl()" title="从 URL 加载 JSON 配置">🔗 URL</button>
+    <button class="btn-act btn-save" id="btn-save" onclick="editorSave()" title="保存到服务器">💾 保存</button>
+    <button class="btn-act btn-export" onclick="editorExport()" title="导出为 JSON 文件">📤 导出</button>
+    <button class="btn-act btn-import" onclick="editorImport()" title="从本地文件导入">📥 导入</button>
+    <button class="btn-act btn-reset" onclick="editorReset()" title="恢复为默认配置">🔄 还原</button>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="editor.js"></script>
+<script>
+  editorInit();
+</script>
+</body>
+</html>

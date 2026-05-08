@@ -1,0 +1,218 @@
+{
+  "difficulty": {
+    "n1":  { "name": "入门",   "hpMult": 0.5,  "goldMult": 1.0, "spawnRate": 0.5,  "speedMult": 0.6,  "killsPerTalent": 50  },
+    "n2":  { "name": "简单",   "hpMult": 0.6,  "goldMult": 1.0, "spawnRate": 0.4,  "speedMult": 0.7,  "killsPerTalent": 45  },
+    "n3":  { "name": "普通",   "hpMult": 0.75, "goldMult": 1.0, "spawnRate": 0.8,  "speedMult": 0.8,  "killsPerTalent": 40  },
+    "n4":  { "name": "进阶",   "hpMult": 0.9,  "goldMult": 1.0, "spawnRate": 0.9,  "speedMult": 0.9,  "killsPerTalent": 35  },
+    "n5":  { "name": "标准",   "hpMult": 1.0,  "goldMult": 1.0, "spawnRate": 1.0,  "speedMult": 1.0,  "killsPerTalent": 30  },
+    "n6":  { "name": "困难",   "hpMult": 1.2,  "goldMult": 1.1, "spawnRate": 1.1,  "speedMult": 1.1,  "killsPerTalent": 28  },
+    "n7":  { "name": "地狱",   "hpMult": 1.5,  "goldMult": 1.2, "spawnRate": 1.25, "speedMult": 1.2,  "killsPerTalent": 25  },
+    "n8":  { "name": "深渊",   "hpMult": 1.8,  "goldMult": 1.3, "spawnRate": 1.4,  "speedMult": 1.3,  "killsPerTalent": 22  },
+    "n9":  { "name": "炼狱",   "hpMult": 2.2,  "goldMult": 1.5, "spawnRate": 1.5,  "speedMult": 1.4,  "killsPerTalent": 20  },
+    "n10": { "name": "不可能", "hpMult": 2.5,  "goldMult": 1.8, "spawnRate": 1.6,  "speedMult": 1.5,  "killsPerTalent": 18  }
+  },
+  "heroes": {
+    "sushi_ninja": {
+      "id": "sushi_ninja",
+      "name": "寿司忍者",
+      "type": "precision",
+      "icon": "🍣",
+      "color": "#ff4757",
+      "hp": 200,
+      "mp": 120,
+      "atkMin": 18,
+      "atkMax": 28,
+      "range": 140,
+      "desc": "纯靠6格卡槽配对公式运转",
+      "bonus": "终极羁绊：召唤三文鱼锦鲤飞艇助战",
+      "ultimatePet": "salmon_koi_airship",
+      "ultimatePetIcon": "🐟"
+    },
+    "immortal": {
+      "id": "immortal",
+      "name": "修仙大仙",
+      "type": "cultivation",
+      "icon": "🧙",
+      "color": "#00d4ff",
+      "hp": 250,
+      "mp": 200,
+      "atkMin": 12,
+      "atkMax": 20,
+      "range": 190,
+      "desc": "远程法系 · 飞剑追击 · L1-L3回收体系",
+      "bonus": "专属悬浮UI：回收/升级武器入口",
+      "cultivationUI": {
+        "weaponIcon": "⚔️",
+        "weaponName": "飞剑",
+        "maxLevel": 10,
+        "upgradeSuccessBase": 0.7,
+        "L2LifetimeMs": 10000,
+        "L2RecoveryTimeMs": 10000
+      }
+    },
+    "sword_hidden": {
+      "id": "sword_hidden",
+      "name": "藏剑",
+      "type": "cultivation",
+      "icon": "🗡️",
+      "color": "#8b5cf6",
+      "hp": 220,
+      "mp": 180,
+      "atkMin": 15,
+      "atkMax": 25,
+      "range": 160,
+      "desc": "近战控场 · 藏剑流派 · L1-L3回收体系",
+      "bonus": "专属悬浮UI：藏剑回收/剑匣升级入口",
+      "cultivationUI": {
+        "weaponIcon": "⚔️",
+        "weaponName": "藏剑",
+        "maxLevel": 8,
+        "upgradeSuccessBase": 0.6,
+        "L2LifetimeMs": 10000,
+        "L2RecoveryTimeMs": 10000
+      }
+    },
+    "psyker": {
+      "id": "psyker",
+      "name": "超能力者",
+      "type": "precision",
+      "icon": "🔮",
+      "color": "#a855f7",
+      "hp": 220,
+      "mp": 250,
+      "atkMin": 10,
+      "atkMax": 16,
+      "range": 220,
+      "desc": "念力控场 · 大范围攻击 · MP回复翻倍",
+      "bonus": "攻击扩散 · 范围最大"
+    }
+  },
+  "waveTemplates": [
+    { "chapter": 1, "wave": 1,  "duration": 45, "monsters": [{ "type": "grunt", "count": 5, "interval": 1.5 }] },
+    { "chapter": 1, "wave": 2,  "duration": 45, "monsters": [{ "type": "grunt", "count": 7, "interval": 1.3 }] },
+    { "chapter": 1, "wave": 3,  "duration": 50, "monsters": [{ "type": "grunt", "count": 6, "interval": 1.2 }, { "type": "runner", "count": 3, "interval": 2.0 }] },
+    { "chapter": 1, "wave": 4,  "duration": 55, "monsters": [{ "type": "grunt", "count": 8, "interval": 1.0 }, { "type": "elite_grunt", "count": 1, "interval": 5.0 }] },
+    { "chapter": 2, "wave": 5,  "duration": 50, "monsters": [{ "type": "grunt", "count": 8, "interval": 1.0 }, { "type": "runner", "count": 4, "interval": 1.8 }] },
+    { "chapter": 2, "wave": 6,  "duration": 55, "monsters": [{ "type": "runner", "count": 8, "interval": 1.3 }, { "type": "tank", "count": 1, "interval": 6.0 }] },
+    { "chapter": 2, "wave": 7,  "duration": 55, "monsters": [{ "type": "grunt", "count": 10, "interval": 0.9 }, { "type": "runner", "count": 5, "interval": 1.5 }] },
+    { "chapter": 2, "wave": 8,  "duration": 60, "monsters": [{ "type": "tank", "count": 2, "interval": 6.0 }, { "type": "elite_runner", "count": 1, "interval": 5.0 }] },
+    { "chapter": 3, "wave": 9,  "duration": 55, "monsters": [{ "type": "grunt", "count": 12, "interval": 0.8 }, { "type": "runner", "count": 6, "interval": 1.2 }] },
+    { "chapter": 3, "wave": 10, "duration": 60, "monsters": [{ "type": "runner", "count": 10, "interval": 1.0 }, { "type": "tank", "count": 2, "interval": 6.0 }] },
+    { "chapter": 3, "wave": 11, "duration": 60, "monsters": [{ "type": "grunt", "count": 10, "interval": 0.7 }, { "type": "runner", "count": 8, "interval": 1.0 }, { "type": "tank", "count": 2, "interval": 6.0 }] },
+    { "chapter": 3, "wave": 12, "duration": 65, "monsters": [{ "type": "tank", "count": 3, "interval": 5.0 }, { "type": "elite_tank", "count": 1, "interval": 5.0 }] },
+    { "chapter": 4, "wave": 13, "duration": 55, "monsters": [{ "type": "grunt", "count": 15, "interval": 0.6 }, { "type": "runner", "count": 10, "interval": 0.9 }] },
+    { "chapter": 4, "wave": 14, "duration": 60, "monsters": [{ "type": "runner", "count": 12, "interval": 0.8 }, { "type": "tank", "count": 3, "interval": 6.0 }] },
+    { "chapter": 4, "wave": 15, "duration": 60, "monsters": [{ "type": "grunt", "count": 12, "interval": 0.5 }, { "type": "runner", "count": 10, "interval": 0.7 }, { "type": "tank", "count": 3, "interval": 5.0 }] },
+    { "chapter": 4, "wave": 16, "duration": 70, "monsters": [{ "type": "elite_grunt", "count": 2, "interval": 5.0 }, { "type": "elite_runner", "count": 2, "interval": 5.0 }, { "type": "boss_mini", "count": 1, "interval": 10.0 }] },
+    { "chapter": 5, "wave": 17, "duration": 55, "monsters": [{ "type": "grunt", "count": 20, "interval": 0.4 }, { "type": "runner", "count": 12, "interval": 0.7 }] },
+    { "chapter": 5, "wave": 18, "duration": 60, "monsters": [{ "type": "runner", "count": 15, "interval": 0.6 }, { "type": "tank", "count": 4, "interval": 5.0 }] },
+    { "chapter": 5, "wave": 19, "duration": 65, "monsters": [{ "type": "grunt", "count": 15, "interval": 0.4 }, { "type": "runner", "count": 12, "interval": 0.6 }, { "type": "tank", "count": 5, "interval": 5.0 }] },
+    { "chapter": 5, "wave": 20, "duration": 90, "monsters": [{ "type": "elite_tank", "count": 3, "interval": 5.0 }, { "type": "boss_final", "count": 1, "interval": 15.0 }] }
+  ],
+  "monsterTypes": {
+    "grunt":        { "name": "杂兵",     "icon": "👾", "hp": 30,  "speed": 1.2, "atk": 5,  "gold": 5,  "size": 12, "color": "#888888" },
+    "runner":       { "name": "疾跑者",   "icon": "🐺", "hp": 20,  "speed": 2.5, "atk": 8,  "gold": 8,  "size": 10, "color": "#ff6348" },
+    "tank":         { "name": "重装兵",   "icon": "🛡️", "hp": 80, "speed": 0.7, "atk": 15, "gold": 15, "size": 18, "color": "#ff6b6b" },
+    "elite_grunt":  { "name": "精英杂兵", "icon": "👹", "hp": 60,  "speed": 1.4, "atk": 10, "gold": 20, "size": 14, "color": "#ffa502" },
+    "elite_runner": { "name": "精英疾跑", "icon": "🐗", "hp": 45,  "speed": 2.8, "atk": 15, "gold": 25, "size": 12, "color": "#ff4757" },
+    "elite_tank":   { "name": "精英重装", "icon": "🏰", "hp": 150, "speed": 0.8, "atk": 25, "gold": 35, "size": 22, "color": "#e74c3c" },
+    "boss_mini":    { "name": "小Boss",   "icon": "👑", "hp": 200, "speed": 1.0, "atk": 30, "gold": 50, "size": 24, "color": "#8b5cf6" },
+    "boss_final":   { "name": "最终Boss", "icon": "💀", "hp": 400, "speed": 1.2, "atk": 40, "gold": 100, "size": 30, "color": "#ff0000" },
+    "sandbag":      { "name": "沙袋暴徒", "icon": "🥊", "hp": 100, "speed": 0.5, "atk": 0,  "gold": 5,  "size": 16, "color": "#a0522d", "dropsStat": true },
+    "gold_slime":   { "name": "纯金史莱姆", "icon": "🪙", "hp": 50, "speed": 1.5, "atk": 0,  "gold": 50, "size": 14, "color": "#ffd700", "dropsGold": true }
+  },
+  "cards": {
+    "worker": [
+      { "id": "w1",  "name": "勉强一击", "rarity": 1, "icon": "👊", "atkBonus": 2,  "desc": "攻击力 +2" },
+      { "id": "w2",  "name": "铁皮护甲", "rarity": 1, "icon": "🛡️", "defBonus": 5,  "desc": "防御 +5" },
+      { "id": "w3",  "name": "轻快步伐", "rarity": 1, "icon": "👟", "spdBonus": 0.2, "desc": "移速 +0.2" },
+      { "id": "w4",  "name": "幸运硬币", "rarity": 1, "icon": "🪙", "goldBonus": 3, "desc": "每击杀额外 +3 金币" },
+      { "id": "w5",  "name": "吸血獠牙", "rarity": 2, "icon": "🦷", "lifesteal": 0.05, "desc": "攻击吸血 5%" },
+      { "id": "w6",  "name": "刺猬外壳", "rarity": 2, "icon": "🦔", "thorns": 0.3,   "desc": "反弹 30% 伤害" },
+      { "id": "w7",  "name": "法力源泉", "rarity": 2, "icon": "💎", "mpRegen": 0.5,  "desc": "每秒回复 0.5 MP" },
+      { "id": "w8",  "name": "暴击手套", "rarity": 2, "icon": "🥊", "critBonus": 0.1, "desc": "暴击率 +10%" },
+      { "id": "w9",  "name": "重击锤",   "rarity": 3, "icon": "🔨", "atkBonus": 5, "crushChance": 0.2, "desc": "攻击+5，20%击退" },
+      { "id": "w10", "name": "时间沙漏", "rarity": 3, "icon": "⏳", "cdReduction": 0.15, "desc": "技能冷却 -15%" },
+      { "id": "w11", "name": "生命宝石", "rarity": 3, "icon": "❤️", "hpBonus": 50,   "desc": "最大生命 +50" },
+      { "id": "w12", "name": "金币磁铁", "rarity": 3, "icon": "🧲", "goldBonus": 10, "pickupRange": 60, "desc": "击杀+10金币，拾取范围+60" }
+    ],
+    "cultivationL2": {
+      "immortal": [
+        { "id": "l2_im1", "name": "飞剑·疾", "rarity": 4, "icon": "⚔️", "element": "wind",  "speedUp": 0.3, "desc": "飞剑速度 +30%" },
+        { "id": "l2_im2", "name": "飞剑·重", "rarity": 4, "icon": "⚔️", "element": "earth", "atkUp": 10,    "desc": "飞剑伤害 +10" },
+        { "id": "l2_im3", "name": "飞剑·幻", "rarity": 4, "icon": "⚔️", "element": "void",  "clone": 1,     "desc": "飞剑数量 +1" }
+      ],
+      "sword_hidden": [
+        { "id": "l2_sh1", "name": "藏剑·破", "rarity": 4, "icon": "🗡️", "element": "fire",   "pierce": 0.3, "desc": "穿透 30%" },
+        { "id": "l2_sh2", "name": "藏剑·影", "rarity": 4, "icon": "🗡️", "element": "shadow", "stealth": 2,  "desc": "击杀后隐身 2秒" },
+        { "id": "l2_sh3", "name": "藏剑·阵", "rarity": 4, "icon": "🗡️", "element": "earth",  "aoe": 40,     "desc": "攻击范围 +40" }
+      ]
+    },
+    "cultivationL3Support": [
+      { "id": "l3s1", "name": "回收加速", "rarity": 4, "icon": "⏩", "recycleSpeedUp": 0.3, "desc": "回收速度 +30%" },
+      { "id": "l3s2", "name": "成功率UP", "rarity": 4, "icon": "✨", "recycleSuccessUp": 0.15, "desc": "回收成功率 +15%" },
+      { "id": "l3s3", "name": "概率增幅", "rarity": 4, "icon": "🎲", "triggerChanceUp": 0.2, "desc": "高级卡触发概率 +20%" },
+      { "id": "l3s4", "name": "频率提升", "rarity": 4, "icon": "📡", "frequencyUp": 0.25, "desc": "回收频次 +25%" },
+      { "id": "l3s5", "name": "倍率强化", "rarity": 5, "icon": "💥", "damageMultUp": 0.3, "desc": "高级卡伤害倍率 +30%" }
+    ],
+    "cultivationL3Core": [
+      { "id": "l3c1", "name": "天剑·斩", "rarity": 5, "icon": "⚡", "skill": "skySlash",  "damage": 80,  "desc": "对大范围敌人造成 80 伤害" },
+      { "id": "l3c2", "name": "灵剑·护", "rarity": 5, "icon": "🛡️", "skill": "spiritShield", "shield": 100, "desc": "获得 100 护盾" },
+      { "id": "l3c3", "name": "血剑·噬", "rarity": 5, "icon": "🩸", "skill": "bloodDrain", "lifeSteal": 0.5, "desc": "攻击吸血 50%，持续 5 秒" },
+      { "id": "l3c4", "name": "阵剑·域", "rarity": 5, "icon": "⭕", "skill": "swordDomain", "radius": 100, "duration": 8, "desc": "展开剑域：范围内敌人每秒 30 伤害" },
+      { "id": "l3c5", "name": "极剑·终", "rarity": 5, "icon": "🌟", "skill": "ultimateStrike", "damage": 200, "desc": "终极一击：单体 200 伤害" },
+      { "id": "l3c6", "name": "御剑·飞", "rarity": 5, "icon": "🦅", "skill": "swordFlight", "speedUp": 0.5, "duration": 6, "desc": "移速 +50%，持续 6 秒" }
+    ],
+    "ultimateSynergySet": ["l3c1", "l3c2", "l3c3", "l3c4", "l3c5", "l3c6"]
+  },
+  "talents": [
+    { "id": "t1",  "name": "自动贩卖机",   "icon": "🤖", "desc": "每30秒强塞一张打工卡",          "rarity": "rare" },
+    { "id": "t2",  "name": "贪婪胶囊",     "icon": "💊", "desc": "收益翻倍但深渊盲盒必出2诅咒卡", "rarity": "epic" },
+    { "id": "t3",  "name": "残骸回收",     "icon": "♻️", "desc": "怪物死亡掉落金币 +50%",          "rarity": "common" },
+    { "id": "t4",  "name": "铁壁防线",     "icon": "🛡️", "desc": "所有怪物速度 -15%",              "rarity": "common" },
+    { "id": "t5",  "name": "暴击催化",     "icon": "⚡", "desc": "暴击伤害 +50%",                  "rarity": "rare" },
+    { "id": "t6",  "name": "无限弹匣",     "icon": "🔫", "desc": "卡槽替换时不消耗旧卡",            "rarity": "epic" },
+    { "id": "t7",  "name": "时间扩展",     "icon": "⌛", "desc": "单局时间延长 5 分钟",             "rarity": "legendary" },
+    { "id": "t8",  "name": "双击触发",     "icon": "👆", "desc": "双击卡牌触发额外效果",            "rarity": "rare" },
+    { "id": "t9",  "name": "幸运之星",     "icon": "⭐", "desc": "抽卡出现稀有卡概率翻倍",          "rarity": "epic" },
+    { "id": "t10", "name": "血之契约",     "icon": "🩸", "desc": "攻击力翻倍但每秒掉血1%",         "rarity": "legendary" },
+    { "id": "t11", "name": "自动回收",     "icon": "🤖", "desc": "L2回收速度翻倍",                 "rarity": "rare" },
+    { "id": "t12", "name": "武器大师",     "icon": "⚒️", "desc": "武器升级成功率 +20%",             "rarity": "rare" },
+    { "id": "t13", "name": "时空扭曲",     "icon": "🌀", "desc": "所有怪物减速30%，持续10秒",       "rarity": "rare" },
+    { "id": "t14", "name": "黄金触手",     "icon": "🪙", "desc": "Boss掉落金币 ×3",               "rarity": "epic" },
+    { "id": "t15", "name": "不死之身",     "icon": "💀", "desc": "死亡后以1HP复活一次",             "rarity": "legendary" }
+  ],
+  "itemPool": {
+    "consumable": [
+      { "id": "it1", "name": "全息清道夫炸弹", "icon": "💣", "desc": "清除屏幕所有普通怪物", "rarity": 3, "cooldown": 0 },
+      { "id": "it2", "name": "紧急治疗针",     "icon": "💉", "desc": "立即恢复 50% HP",         "rarity": 2, "cooldown": 0 },
+      { "id": "it3", "name": "能量脉冲",       "icon": "⚡", "desc": "击退周围所有敌人",         "rarity": 2, "cooldown": 0 }
+    ],
+    "passive": [
+      { "id": "it4", "name": "小型护盾发生器", "icon": "🔰", "desc": "每30秒获得20点护盾",       "rarity": 3, "passive": true },
+      { "id": "it5", "name": "迷你炮塔",       "icon": "🏹", "desc": "自动攻击附近敌人，伤害15",  "rarity": 4, "passive": true },
+      { "id": "it6", "name": "金币收集器",     "icon": "💰", "desc": "自动拾取范围内金币",        "rarity": 3, "passive": true }
+    ],
+    "boss": [
+      { "id": "it7", "name": "超级阀门·沙袋", "icon": "🚪", "desc": "点击选择：召唤沙袋暴徒出怪口",   "rarity": 5, "bossDrop": true },
+      { "id": "it8", "name": "超级阀门·金史", "icon": "🚪", "desc": "点击选择：召唤纯金史莱姆出怪口", "rarity": 5, "bossDrop": true },
+      { "id": "it9", "name": "超级阀门·精英", "icon": "🚪", "desc": "点击选择：召唤精英杂兵出怪口",   "rarity": 5, "bossDrop": true }
+    ]
+  },
+  "precisionPairs": {
+    "pair_attack":     { "cards": ["w1", "w9"],  "name": "攻击共鸣", "effect": { "atkBonus": 10 }, "icon": "⚔️" },
+    "pair_defense":    { "cards": ["w2", "w6"],  "name": "防御共鸣", "effect": { "defBonus": 15 }, "icon": "🛡️" },
+    "pair_speed":      { "cards": ["w3", "w4"],  "name": "速度共鸣", "effect": { "spdBonus": 0.5 }, "icon": "👟" },
+    "pair_crit":       { "cards": ["w8", "w9"],  "name": "暴击共鸣", "effect": { "critBonus": 0.25 }, "icon": "💥" },
+    "pair_lifesteal":  { "cards": ["w5", "w11"], "name": "吸血共鸣", "effect": { "lifesteal": 0.1 }, "icon": "🩸" },
+    "triple_ultimate": { "cards": ["w9", "w11", "w12"], "name": "终极共鸣", "effect": "summon_ultimate_pet", "icon": "🌟" }
+  },
+  "constants": {
+    "cardDrawCost": 20,
+    "cardSlotsMax": 6,
+    "itemSlotsMax": 5,
+    "cardRarity": { "COMMON": 1, "UNCOMMON": 2, "RARE": 3, "EPIC": 4, "LEGENDARY": 5 },
+    "cardSellBack": { "1": 5, "2": 10, "3": 20, "4": 40, "5": 80 },
+    "heroType": { "PRECISION": "precision", "CULTIVATION": "cultivation" }
+  }
+}
