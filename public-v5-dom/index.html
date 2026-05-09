@@ -2,257 +2,935 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>不完美作战 v5.1 DOM</title>
+<title>不完美作战</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{
-    width:100%;height:100%;
-    min-height:100vh;min-height:100dvh;
-    overflow:hidden;
-    position:fixed;top:0;left:0;
-}
-body{
-    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    background:#0a0a1a;color:#fff;
-    -webkit-tap-highlight-color:transparent;
-    user-select:none;-webkit-user-select:none;
-    touch-action:manipulation;
-    padding:env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
-}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif}
+#game-container{position:relative;width:390px;height:844px;margin:0 auto;overflow:hidden;background:#0a0a1a}
+#game-canvas{position:absolute;top:0;left:0;width:390px;height:844px;display:block}
+#game-ui-overlay{position:absolute;top:0;left:0;width:390px;height:844px;pointer-events:none}
+#game-ui-overlay>*{pointer-events:auto}
 
-/* === Start Screen === */
-#start-screen{
-    position:fixed;top:0;left:0;right:0;bottom:0;
-    width:100%;height:100%;height:100dvh;
-    background:linear-gradient(135deg,#0a0a1a 0%,#1a1a3a 50%,#0a0a1a 100%);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    z-index:1000;transition:opacity 0.4s;
-}
-#start-screen.hidden{opacity:0;pointer-events:none}
-.game-title{
-    font-size:clamp(28px,8vw,42px);font-weight:900;
-    background:linear-gradient(135deg,#00d4ff,#8b5cf6,#ff69b4);
-    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-    margin-bottom:4px;letter-spacing:2px;
-}
-.game-subtitle{font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:8px}
-.version-tag{padding:2px 10px;border-radius:10px;font-size:10px;background:rgba(139,92,246,0.2);color:#8b5cf6;border:1px solid rgba(139,92,246,0.3);margin-bottom:20px}
+/* HUD */
+#hud{position:absolute;top:8px;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:0 10px;z-index:10}
+#hud-left{display:flex;flex-direction:column;gap:3px}
+.hp-bar-bg{width:130px;height:14px;background:rgba(0,0,0,0.6);border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,0.15)}
+.hp-bar-fill{height:100%;background:linear-gradient(90deg,#ef4444,#22c55e);border-radius:7px;transition:width 0.2s}
+.mp-bar-bg{width:130px;height:8px;background:rgba(0,0,0,0.6);border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,0.1)}
+.mp-bar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:4px;transition:width 0.2s}
+.hp-text,.mp-text{position:absolute;font-size:10px;color:#fff;line-height:14px;left:4px;text-shadow:0 1px 2px rgba(0,0,0,0.8)}
+#hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:12px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.9);background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:8px}
+#hud-right .wave-label{font-size:10px;color:#8b5cf6;font-weight:bold}
+#hud-right .gold-label{color:#ffd700;font-weight:bold}
+#btn-pause{position:absolute;top:10px;right:10px;width:32px;height:32px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:11}
 
-/* Difficulty */
-.diff-section{background:rgba(255,255,255,0.04);border-radius:16px;padding:16px 12px;border:1px solid rgba(255,255,255,0.08);margin-bottom:12px;width:min(380px,92vw);text-align:center}
-.diff-label{font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:10px;letter-spacing:1px}
-.diff-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
-.diff-btn{padding:12px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;transition:all 0.15s;min-height:44px;display:flex;align-items:center;justify-content:center}
-.diff-btn:active,.diff-btn.selected{background:rgba(0,212,255,0.2);border-color:#00d4ff;color:#00d4ff}
-.diff-desc{margin-top:8px;font-size:11px;color:rgba(255,255,255,0.35)}
+/* Bottom Panel */
+#bottom-panel{position:absolute;bottom:6px;left:4px;right:4px;display:flex;flex-direction:column;gap:4px;z-index:10}
+#card-slots{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.card-slot{width:56px;height:70px;background:rgba(4,4,16,0.85);border:2px solid rgba(139,92,246,0.3);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;transition:all 0.15s}
+.card-slot:hover,.card-slot:active{border-color:#8b5cf6;transform:scale(1.05)}
+.card-slot.empty{border-color:rgba(255,255,255,0.08);cursor:default}
+.card-slot.empty:hover,.card-slot.empty:active{transform:none;border-color:rgba(255,255,255,0.08)}
+.card-icon{font-size:22px;line-height:1}
+.card-name{font-size:8px;color:#ccc;text-align:center;line-height:1.1;margin-top:1px}
+.card-level{font-size:7px;color:#ffd700;margin-top:1px}
+#item-slots{display:flex;gap:4px;justify-content:center}
+.item-slot{width:48px;height:48px;background:rgba(4,4,16,0.85);border:2px solid rgba(255,255,255,0.12);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:all 0.15s}
+.item-slot:hover,.item-slot:active{border-color:#ffd700;transform:scale(1.05)}
+.item-slot.empty{cursor:default}
+.item-slot.empty:hover,.item-slot.empty:active{transform:none;border-color:rgba(255,255,255,0.12)}
+.item-icon{font-size:20px;line-height:1}
+.item-name{font-size:7px;color:#ccc;text-align:center;line-height:1.1}
+#btn-draw{width:240px;height:46px;margin:0 auto;background:linear-gradient(135deg,#7c3aed,#a855f7);border:2px solid #ffd700;border-radius:12px;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;letter-spacing:1px;text-shadow:0 1px 2px rgba(0,0,0,0.4);transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+#btn-draw:active{transform:scale(0.96);opacity:0.9}
+#btn-draw:disabled{opacity:0.4;cursor:not-allowed;transform:none}
 
-/* Hero */
-.hero-section{background:rgba(255,255,255,0.04);border-radius:16px;padding:14px 12px;border:1px solid rgba(255,255,255,0.08);margin-bottom:12px;width:min(380px,92vw)}
-.hero-section .diff-label{display:block;text-align:center}
-.hero-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
-.hero-card{padding:14px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);cursor:pointer;text-align:center;transition:all 0.2s;min-height:88px;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.hero-card:active,.hero-card.selected{border-color:#00d4ff;background:rgba(0,212,255,0.1)}
-.hero-card.selected{box-shadow:0 0 16px rgba(0,212,255,0.25)}
-.hero-card-icon{font-size:32px;margin-bottom:4px;line-height:1}
-.hero-card-name{font-size:14px;font-weight:bold;margin-bottom:2px}
-.hero-card-type{font-size:10px;color:rgba(255,255,255,0.35)}
-.hero-card-desc{font-size:10px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.3}
+/* Game Over Panel */
+#gameover-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;background:rgba(4,4,16,0.95);border:2px solid #8b5cf6;border-radius:20px;padding:24px;text-align:center;z-index:20;display:none;flex-direction:column;align-items:center;gap:12px}
+#gameover-panel .title{font-size:24px;font-weight:bold;color:#ef4444;text-shadow:0 0 20px rgba(239,68,68,0.4)}
+#gameover-panel .grade{font-size:48px;font-weight:bold;color:#ffd700;text-shadow:0 0 30px rgba(255,215,0,0.5)}
+#gameover-panel .stats{font-size:13px;color:#ccc;line-height:1.8}
+#gameover-panel .stat-val{color:#fff;font-weight:bold}
+#btn-retry{width:160px;height:44px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:2px solid #ffd700;border-radius:12px;color:#fff;font-size:16px;font-weight:bold;cursor:pointer}
 
-.start-btn{
-    padding:14px 56px;border-radius:14px;min-height:52px;width:min(320px,80vw);
-    border:none;background:linear-gradient(135deg,#8b5cf6,#00d4ff);
-    color:#fff;font-size:18px;font-weight:bold;cursor:pointer;
-    transition:transform 0.15s;letter-spacing:1px;
-}
-.start-btn:active{transform:scale(0.96)}
-.start-btn:disabled{opacity:0.35;transform:none}
+/* Wave Banner */
+#wave-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:bold;color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,0.6);z-index:15;pointer-events:none;opacity:0;transition:opacity 0.3s}
+#wave-banner.show{opacity:1;animation:wvPulse 0.6s ease-out}
+@keyframes wvPulse{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0}50%{transform:translate(-50%,-50%) scale(1.15)}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
 
-/* Game Container */
-#game-container{
-    position:fixed;top:0;left:0;right:0;bottom:0;
-    width:100%;height:100%;height:100dvh;
-    display:none;background:#0a0a1a;overflow:hidden;
-}
-#game-container.active{display:block}
-#game-canvas{display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+/* Pause Overlay */
+#pause-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:18;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#pause-overlay .pause-title{font-size:28px;font-weight:bold;color:#8b5cf6}
+#pause-overlay button{width:160px;height:44px;background:rgba(139,92,246,0.3);border:2px solid #8b5cf6;border-radius:12px;color:#fff;font-size:16px;cursor:pointer}
+#pause-overlay button:active{background:rgba(139,92,246,0.5)}
+
+/* Floating text */
+#floating-texts{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:5}
+.float-text{position:absolute;font-size:12px;font-weight:bold;color:#ffd700;text-shadow:0 1px 3px rgba(0,0,0,0.8);animation:floatUp 1s ease-out forwards;pointer-events:none}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
+
+/* Drawing card animation */
+#draw-result{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:25;display:none;flex-direction:column;align-items:center;gap:8px;background:rgba(4,4,16,0.95);border:2px solid #ffd700;border-radius:16px;padding:20px;animation:popIn 0.3s ease-out}
+@keyframes popIn{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+#draw-result .card-drawn{font-size:36px}
+#draw-result .card-name{font-size:16px;color:#fff;font-weight:bold}
+#draw-result button{width:100px;height:36px;background:#8b5cf6;border:none;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;margin-top:4px}
+
+/* Sell card overlay */
+#sell-overlay{position:absolute;bottom:110px;left:50%;transform:translateX(-50%);z-index:12;display:none;flex-direction:column;align-items:center;gap:6px;background:rgba(4,4,16,0.93);border:1px solid rgba(255,215,0,0.5);border-radius:10px;padding:8px 12px}
+#sell-overlay .sell-text{font-size:12px;color:#ffd700}
+#sell-overlay .sell-btns{display:flex;gap:6px}
+#sell-overlay button{height:28px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;border:none;color:#fff}
+.btn-sell-yes{background:#ef4444}
+.btn-sell-no{background:rgba(255,255,255,0.15)}
+
+/* Invincible glow */
+.invincible .hp-bar-fill{background:linear-gradient(90deg,#ffd700,#ffd700)!important}
+.invincible .hp-bar-bg{border-color:#ffd700!important;box-shadow:0 0 10px rgba(255,215,0,0.5)}
+
+/* Toast */
+#toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;color:#fff;background:rgba(0,0,0,0.8);padding:8px 16px;border-radius:20px;z-index:30;pointer-events:none;opacity:0;transition:opacity 0.2s}
+#toast.show{opacity:1}
+
+/* Responsive scaling */
+@media(max-width:390px){#game-container{transform:scale(calc(100vw/390));transform-origin:top left;height:calc(844*100vw/390)}}
+@media(min-width:391px)and(max-width:768px){#game-container{transform:scale(min(calc(100vw/390),calc(100vh/844)));transform-origin:center center;position:absolute;top:50%;left:50%;margin-top:calc(-422*min(calc(100vw/390),calc(100vh/844)));margin-left:calc(-195*min(calc(100vw/390),calc(100vh/844)))}}
+@media(min-width:769px){body{display:flex;align-items:center;justify-content:center;background:#050510}#game-container{transform:scale(min(1,calc((100vh-20px)/844)));transform-origin:center center}}
 </style>
-
-<!-- DOM Overlay CSS -->
-<link rel="stylesheet" href="overlay-v1.css">
-
 </head>
 <body>
-
-<!-- Start Screen -->
-<div id="start-screen">
-    <h1 class="game-title">不完美作战</h1>
-    <p class="game-subtitle">IMPERFECT COMBAT</p>
-    <span class="version-tag">v5.1 DOM</span>
-
-    <div class="diff-section">
-        <div class="diff-label">🎯 选择难度</div>
-        <div class="diff-grid" id="diff-grid"></div>
-        <div class="diff-desc" id="diff-desc">怪物血量 ×1.0 | 怪物速度 ×1.0</div>
-    </div>
-
-    <div class="hero-section">
-        <div class="diff-label">⚔️ 选择英雄</div>
-        <div class="hero-grid" id="hero-grid"></div>
-    </div>
-
-    <button class="start-btn" id="start-btn" disabled>选择英雄后开始</button>
-</div>
-
-<!-- Game Container -->
 <div id="game-container">
-    <canvas id="game-canvas"></canvas>
-
-    <!-- ===== DOM Overlay (on top of canvas) ===== -->
-    <div id="game-ui-overlay">
-        <!-- HUD -->
-        <div id="hud" class="ui-interactive">
-            <div id="hud-left">
-                <div id="hp-container"><div id="hp-fill"></div><span id="hp-text">❤ 60/60</span></div>
-                <div id="mp-container"><div id="mp-fill"></div><span id="mp-text">💎 0</span></div>
-            </div>
-            <div id="hud-right">
-                <span id="wave-text">⚔ 1-1</span>
-                <span id="gold-text">💰0</span>
-                <span id="kills-text">💀0 (0/5)</span>
-            </div>
-            <div id="hud-btns">
-                <button id="btn-pause">⏸</button>
-                <button id="btn-blueprint">📋</button>
-            </div>
-        </div>
-
-        <!-- Bottom Panel -->
-        <div id="bottom-panel" class="ui-interactive">
-            <div id="items-row"><span class="label">道具</span><div id="item-slots"></div></div>
-            <div id="cards-row"><span class="label">卡牌</span><div id="card-slots"></div></div>
-            <button id="btn-draw">💰 抽 卡 💰<br><small>💰20</small></button>
-        </div>
-
-        <!-- Talent Panel -->
-        <div id="talent-panel" class="ui-interactive panel-overlay" style="display:none">
-            <div class="panel-box"><h3>🌟 选择天赋 (每杀敌获得)</h3><div id="talent-choices"></div></div>
-        </div>
-
-        <!-- Cultivation Panel -->
-        <div id="cultivation-panel" class="ui-interactive panel-overlay" style="display:none">
-            <div class="panel-box"><div id="cultivation-content"></div></div>
-        </div>
-
-        <!-- Blueprint Panel -->
-        <div id="blueprint-panel" class="ui-interactive panel-overlay" style="display:none">
-            <div class="panel-box" style="position:relative">
-                <button id="btn-close-blueprint">✕</button>
-                <h3>📋 蓝图</h3>
-                <div id="blueprint-content"></div>
-            </div>
-        </div>
-
-        <!-- Game Over Panel -->
-        <div id="gameover-panel" class="ui-interactive panel-overlay" style="display:none">
-            <div class="panel-box">
-                <div id="gameover-content"></div>
-                <button id="btn-retry">🔄 再来一局</button>
-            </div>
-        </div>
+  <canvas id="game-canvas"></canvas>
+  <div id="game-ui-overlay">
+    <div id="hud">
+      <div id="hud-left">
+        <div class="hp-bar-bg" style="position:relative"><span class="hp-text" id="hp-text">100/100</span><div class="hp-bar-fill" id="hp-fill" style="width:100%"></div></div>
+        <div class="mp-bar-bg" style="position:relative"><span class="mp-text" id="mp-text">100/100</span><div class="mp-bar-fill" id="mp-fill" style="width:100%"></div></div>
+      </div>
+      <div id="hud-right">
+        <span class="wave-label" id="wave-label">🌊 第1波</span>
+        <span class="gold-label" id="gold-label">💰 0</span>
+        <span style="font-size:10px;color:#aaa" id="kills-label">💀 击杀:0</span>
+      </div>
     </div>
+    <button id="btn-pause" onclick="togglePause()">⏸</button>
+
+    <div id="bottom-panel">
+      <div id="card-slots"></div>
+      <div id="item-slots"></div>
+      <button id="btn-draw" onclick="drawCard()">🎴 抽卡 (20💰)</button>
+    </div>
+
+    <div id="sell-overlay">
+      <span class="sell-text">出售此卡牌获得 10💰?</span>
+      <div class="sell-btns">
+        <button class="btn-sell-yes" id="btn-sell-confirm">出售</button>
+        <button class="btn-sell-no" id="btn-sell-cancel">取消</button>
+      </div>
+    </div>
+
+    <div id="gameover-panel">
+      <div class="title">💀 战斗结束</div>
+      <div class="grade" id="grade-text">B</div>
+      <div class="stats">
+        <div>🏆 得分: <span class="stat-val" id="go-score">0</span></div>
+        <div>🌊 到达波次: <span class="stat-val" id="go-wave">1</span></div>
+        <div>💀 击杀数: <span class="stat-val" id="go-kills">0</span></div>
+        <div>💰 金币: <span class="stat-val" id="go-gold">0</span></div>
+      </div>
+      <button id="btn-retry" onclick="restartGame()">🔄 再来一局</button>
+    </div>
+
+    <div id="pause-overlay">
+      <div class="pause-title">⏸ 暂停中</div>
+      <button onclick="togglePause()">▶ 继续游戏</button>
+      <button onclick="restartGame()">🔄 重新开始</button>
+    </div>
+
+    <div id="wave-banner"></div>
+    <div id="floating-texts"></div>
+    <div id="toast"></div>
+    <div id="draw-result">
+      <div class="card-drawn" id="draw-icon"></div>
+      <div class="card-name" id="draw-name"></div>
+      <span style="font-size:12px;color:#ccc" id="draw-desc"></span>
+      <button onclick="closeDrawResult()">确认</button>
+    </div>
+  </div>
 </div>
-
-<!-- ===== Engine (from parent public-v5) ===== -->
-<script src="../public-v5/engine/engine-core.js"></script>
-<script src="../public-v5/engine/engine-input.js"></script>
-<script src="../public-v5/engine/engine-audio.js"></script>
-<script src="../public-v5/engine/engine-render.js"></script>
-
-<!-- Game Data -->
-<script src="../public-v5/gamedata/game-data.js"></script>
-<script src="../public-v5/gamedata/game-state.js"></script>
-
-<!-- Game Logic -->
-<script src="../public-v5/logic/game-loop.js"></script>
-<script src="../public-v5/logic/game-combat.js"></script>
-<script src="../public-v5/logic/game-waves.js"></script>
-<script src="../public-v5/logic/game-cards.js"></script>
-<script src="../public-v5/logic/game-items.js"></script>
-<script src="../public-v5/logic/game-talents.js"></script>
-<script src="../public-v5/logic/game-heroes.js"></script>
-
-<!-- Canvas UI (hidden behind DOM overlay, render boss items) -->
-<script src="../public-v5/ui/game-ui.js"></script>
-<script src="../public-v5/ui/game-render.js"></script>
-
-<!-- Entry -->
-<script src="../public-v5/game-main.js"></script>
-
-<!-- DOM Overlay Script -->
-<script src="overlay-v1.js"></script>
 
 <script>
-(function(){
-    'use strict';
-    var selectedDiff = 'n5';
-    var selectedHero = 'immortal';
+// ============ CONSTANTS ============
+const CW = 390, CH = 844;
+const CARD_TYPES = [
+  {id:'atk',icon:'🗡️',name:'攻击强化',desc:'ATK +5',color:'#ef4444'},
+  {id:'def',icon:'🛡️',name:'铁壁',desc:'受伤 -20%',color:'#3b82f6'},
+  {id:'spd',icon:'⚡',name:'迅捷',desc:'攻速 +30%',color:'#facc15'},
+  {id:'vamp',icon:'💀',name:'吸血',desc:'伤害10%回血',color:'#22c55e'},
+  {id:'burn',icon:'🔥',name:'燃烧',desc:'额外5点伤害',color:'#f97316'},
+  {id:'ice',icon:'❄️',name:'冰冻',desc:'减速30%',color:'#06b6d4'}
+];
+const ITEM_TYPES = [
+  {id:'hp_pot',icon:'❤️',name:'生命药水',desc:'回复30HP',effect:'heal',val:30},
+  {id:'mp_pot',icon:'💎',name:'魔力药水',desc:'回复50MP',effect:'mp',val:50},
+  {id:'lightning',icon:'⚡',name:'闪电卷轴',desc:'全屏50伤害',effect:'lightning',val:50},
+  {id:'shield',icon:'🛡️',name:'护盾卷轴',desc:'5秒无敌',effect:'shield',val:5},
+  {id:'xp_orb',icon:'🌟',name:'经验宝珠',desc:'+50经验',effect:'xp',val:50}
+];
+const MONSTER_TYPES = [
+  {id:'slime',name:'史莱姆',icon:'🟢',hp:20,atk:5,speed:0.6,size:12,color:'#22c55e',gold:5,xp:5},
+  {id:'skeleton',name:'骷髅兵',icon:'💀',hp:40,atk:8,speed:0.45,size:14,color:'#f97316',gold:10,xp:10},
+  {id:'boss',name:'魔王',icon:'👹',hp:100,atk:15,speed:0.35,size:18,color:'#ef4444',gold:30,xp:30},
+];
 
-    var diffGrid = document.getElementById('diff-grid');
-    var diffNames = ['简单','较','普通','稍难','标准','困难','噩梦','深渊','地狱','不可能'];
-    var diffColors = ['🟢','🟢','🟡','🟡','🟠','🟠','🔴','🔴','🟣','💀'];
-    for (var i = 1; i <= 10; i++) {
-        (function(n){
-            var btn = document.createElement('div');
-            btn.className = 'diff-btn' + (n === 5 ? ' selected' : '');
-            btn.textContent = diffColors[n-1] + ' ' + diffNames[n-1];
-            btn.addEventListener('click', function(){
-                document.querySelectorAll('.diff-btn').forEach(function(b){b.classList.remove('selected')});
-                btn.classList.add('selected');
-                selectedDiff = 'n' + n;
-            });
-            diffGrid.appendChild(btn);
-        })(i);
+// ============ DOM REFS ============
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = CW;
+canvas.height = CH;
+
+const $hpFill = document.getElementById('hp-fill');
+const $hpText = document.getElementById('hp-text');
+const $mpFill = document.getElementById('mp-fill');
+const $mpText = document.getElementById('mp-text');
+const $waveLabel = document.getElementById('wave-label');
+const $goldLabel = document.getElementById('gold-label');
+const $killsLabel = document.getElementById('kills-label');
+const $cardSlots = document.getElementById('card-slots');
+const $itemSlots = document.getElementById('item-slots');
+const $btnDraw = document.getElementById('btn-draw');
+const $gameover = document.getElementById('gameover-panel');
+const $pauseOverlay = document.getElementById('pause-overlay');
+const $waveBanner = document.getElementById('wave-banner');
+const $floating = document.getElementById('floating-texts');
+const $sellOverlay = document.getElementById('sell-overlay');
+const $drawResult = document.getElementById('draw-result');
+const $toast = document.getElementById('toast');
+const $hudLeft = document.getElementById('hud-left');
+
+// ============ GAME STATE ============
+var G;
+function initG() {
+  G = {
+    hero: {x:CW/2, y:CH*0.55, hp:100, maxHp:100, mp:100, maxMp:100, atk:10, speed:2.5, lvl:1, xp:0, xpNeed:50},
+    monsters: [],
+    cards: [],
+    items: [],
+    gold: 0,
+    wave: 1,
+    kills: 0,
+    phase: 'playing',
+    score: 0,
+    projectiles: [],
+    particles: [],
+    atkCooldown: 0,
+    atkInterval: 48,
+    invincible: 0,
+    iceSlow: 1,
+    sellTarget: -1,
+    waveBannerTimer: 0,
+    waveMonstersLeft: 0,
+    totalSpawned: 0
+  };
+}
+initG();
+
+// ============ HELPER FUNCTIONS ============
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function lerp(a,b,t){return a+(b-a)*t}
+function rand(min,max){return Math.random()*(max-min)+min}
+function randInt(min,max){return Math.floor(rand(min,max+1))}
+function clamp(v,lo,hi){return v<lo?lo:v>hi?hi:v}
+
+// Card bonuses
+function cardCount(id) {
+  return G.cards.filter(c=>c.id===id).reduce((s,c)=>s+c.level,0);
+}
+function getCardBonus(id) {
+  var c=cardCount(id);
+  switch(id){
+    case 'atk': return c*5;
+    case 'def': return Math.min(c*0.1, 0.6);
+    case 'spd': return Math.min(c*0.15, 0.75);
+    case 'vamp': return Math.min(c*0.05, 0.3);
+    case 'burn': return c*5;
+    case 'ice': return Math.min(c*0.15, 0.6);
+    default: return 0;
+  }
+}
+
+// ============ SPAWN SYSTEM ============
+function spawnWave(w) {
+  G.waveMonstersLeft = 0;
+  var scale = 1 + (w-1)*0.2;
+  
+  function spawn(typeId, count) {
+    var t = MONSTER_TYPES.find(m=>m.id===typeId);
+    for (var i=0;i<count;i++) {
+      var edge=randInt(0,3);
+      var x,y;
+      if(edge===0){x=rand(-20,CW+20);y=-20}
+      else if(edge===1){x=CW+20;y=rand(-20,CH+20)}
+      else if(edge===2){x=rand(-20,CW+20);y=CH+20}
+      else{x=-20;y=rand(-20,CH+20)}
+      G.monsters.push({
+        id:t.id, icon:t.icon, name:t.name, color:t.color, size:t.size,
+        hp:Math.ceil(t.hp*scale), maxHp:Math.ceil(t.hp*scale),
+        atk:Math.ceil(t.atk*scale), speed:t.speed*scale,
+        x:x, y:y, gold:t.gold, xp:t.xp,
+        slowed:0, burning:0, burnTimer:0
+      });
+      G.waveMonstersLeft++;
+      G.totalSpawned++;
     }
+  }
 
-    var heroGrid = document.getElementById('hero-grid');
-    Object.keys(HEROES).forEach(function(key){
-        var h = HEROES[key];
-        var card = document.createElement('div');
-        card.className = 'hero-card' + (key === 'immortal' ? ' selected' : '');
-        card.innerHTML = '<div class="hero-card-icon">' + h.icon + '</div>' +
-            '<div class="hero-card-name" style="color:' + h.color + '">' + h.name + '</div>' +
-            '<div class="hero-card-type">' + (h.type === 'precision' ? '🎯精准射击' : '⚡自由射击') + '</div>' +
-            '<div class="hero-card-desc">' + h.desc + '</div>';
-        card.addEventListener('click', function(){
-            document.querySelectorAll('.hero-card').forEach(function(c){c.classList.remove('selected')});
-            card.classList.add('selected');
-            selectedHero = key;
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('start-btn').textContent = '⚔️ 选择 ' + h.name + ' 开始';
-        });
-        heroGrid.appendChild(card);
+  if(w===1){spawn('slime',3)}
+  else if(w===2){spawn('slime',4);spawn('skeleton',1)}
+  else if(w===3){spawn('slime',5);spawn('skeleton',2);spawn('boss',1)}
+  else {
+    var extra=Math.floor(w/2);
+    spawn('slime',3+extra);
+    spawn('skeleton',1+Math.floor(w/3));
+    if(w>=3) spawn('boss',1+Math.floor((w-3)/3));
+  }
+}
+
+function showWaveBanner() {
+  $waveBanner.textContent = '🌊 第 ' + G.wave + ' 波';
+  $waveBanner.classList.remove('show');
+  void $waveBanner.offsetWidth;
+  $waveBanner.classList.add('show');
+  G.waveBannerTimer = 90;
+}
+
+// ============ ITEM SYSTEM ============
+function addItem(typeId) {
+  if(G.items.length>=5) return false;
+  var t=ITEM_TYPES.find(i=>i.id===typeId);
+  if(!t) return false;
+  G.items.push({id:t.id,icon:t.icon,name:t.name,desc:t.desc,effect:t.effect,val:t.val});
+  return true;
+}
+
+function useItem(idx) {
+  if(idx<0||idx>=G.items.length) return;
+  var item=G.items[idx];
+  G.items.splice(idx,1);
+  switch(item.effect){
+    case 'heal':
+      G.hero.hp=Math.min(G.hero.maxHp,G.hero.hp+item.val);
+      spawnFloating(G.hero.x,G.hero.y-20,'+'+item.val+' ❤️','#22c55e');
+      break;
+    case 'mp':
+      G.hero.mp=Math.min(G.hero.maxMp,G.hero.mp+item.val);
+      spawnFloating(G.hero.x,G.hero.y-20,'+'+item.val+' 💎','#3b82f6');
+      break;
+    case 'lightning':
+      for(var i=0;i<G.monsters.length;i++){
+        var m=G.monsters[i];
+        m.hp-=item.val;
+        spawnFloating(m.x,m.y,'-'+item.val,'#facc15');
+        if(m.hp<=0) spawnDeath(m);
+      }
+      G.monsters=G.monsters.filter(m=>m.hp>0);
+      break;
+    case 'shield':
+      G.invincible=Math.max(G.invincible,item.val*60);
+      $hudLeft.classList.add('invincible');
+      spawnFloating(G.hero.x,G.hero.y-20,'🛡️ 无敌!','#ffd700');
+      break;
+    case 'xp':
+      G.hero.xp+=item.val;
+      spawnFloating(G.hero.x,G.hero.y-20,'+'+item.val+' XP','#a855f7');
+      checkLevelUp();
+      break;
+  }
+  updateDOM();
+}
+
+// ============ CARD SYSTEM ============
+function drawCard() {
+  if(G.gold<20) {showToast('💰 金币不足!');return}
+  if(G.cards.length>=6) {showToast('卡牌槽位已满!');return}
+  G.gold-=20;
+  
+  var weights=[30,22,18,12,10,8];
+  var total=weights.reduce((a,b)=>a+b,0);
+  var r=Math.random()*total,sum=0,tp=0;
+  for(var i=0;i<weights.length;i++){sum+=weights[i];if(r<=sum){tp=i;break}}
+  var ct=CARD_TYPES[tp];
+  
+  // Check if we already have this card to level up
+  var existing=-1;
+  for(var i=0;i<G.cards.length;i++){if(G.cards[i].id===ct.id){existing=i;break}}
+  
+  if(existing>=0){
+    G.cards[existing].level++;
+    $drawResult.querySelector('#draw-icon').textContent=ct.icon;
+    $drawResult.querySelector('#draw-name').textContent=ct.name+' Lv.'+G.cards[existing].level;
+    $drawResult.querySelector('#draw-desc').textContent=ct.desc+' (升级!)';
+  } else {
+    G.cards.push({id:ct.id,icon:ct.icon,name:ct.name,desc:ct.desc,level:1,color:ct.color});
+    $drawResult.querySelector('#draw-icon').textContent=ct.icon;
+    $drawResult.querySelector('#draw-name').textContent=ct.name;
+    $drawResult.querySelector('#draw-desc').textContent=ct.desc;
+  }
+  
+  $drawResult.style.display='flex';
+  updateDOM();
+}
+
+function closeDrawResult() {
+  $drawResult.style.display='none';
+}
+
+function sellCard(idx) {
+  G.sellTarget=-1;
+  $sellOverlay.style.display='none';
+  if(idx<0||idx>=G.cards.length) return;
+  G.cards.splice(idx,1);
+  G.gold+=10;
+  spawnFloating(CW/2,CH/2,'+10 💰','#ffd700');
+  updateDOM();
+}
+
+function clickCard(idx) {
+  if(G.phase!=='playing') return;
+  if(G.cards.length===0||idx>=G.cards.length) return;
+  G.sellTarget=idx;
+  $sellOverlay.style.display='flex';
+}
+
+// ============ PARTICLES & FLOATING TEXT ============
+function spawnParticles(x,y,count,color) {
+  for(var i=0;i<count;i++){
+    G.particles.push({
+      x:x,y:y,vx:rand(-2,2),vy:rand(-3,1),life:rand(15,30),maxLife:30,
+      color:color,size:rand(1.5,4)
     });
+  }
+}
 
-    (function(){
-        var sel = document.querySelector('.hero-card.selected');
-        if (sel) {
-            document.getElementById('start-btn').disabled = false;
-            var nameEl = sel.querySelector('.hero-card-name');
-            document.getElementById('start-btn').textContent = '⚔️ 选择 ' + (nameEl ? nameEl.textContent : '英雄') + ' 开始';
-        }
-    })();
+function spawnFloating(x,y,text,color) {
+  var el=document.createElement('div');
+  el.className='float-text';
+  el.textContent=text;
+  el.style.left=x+'px';
+  el.style.top=y+'px';
+  el.style.color=color;
+  el.addEventListener('animationend',function(){el.remove()});
+  $floating.appendChild(el);
+}
 
-    document.getElementById('start-btn').addEventListener('click', function(){
-        document.getElementById('start-screen').classList.add('hidden');
-        document.getElementById('game-container').classList.add('active');
-        gameMain();
-        gameStart(selectedDiff, selectedHero);
-    });
-})();
+function spawnDeath(m) {
+  spawnParticles(m.x,m.y,12,m.color);
+  spawnFloating(m.x,m.y-10,'+'+m.gold+'💰','#ffd700');
+  spawnFloating(m.x,m.y+10,'+'+m.xp+'XP','#a855f7');
+}
+
+// ============ COMBAT ============
+function findNearestMonster() {
+  var best=null,bestD=1e9;
+  for(var i=0;i<G.monsters.length;i++){
+    var d=dist(G.hero,G.monsters[i]);
+    if(d<bestD){bestD=d;best=G.monsters[i]}
+  }
+  return best;
+}
+
+function heroAttack() {
+  var target=findNearestMonster();
+  if(!target) return;
+  
+  var dmg=G.hero.atk+getCardBonus('atk');
+  target.hp-=dmg;
+  
+  // Burn
+  var burnDmg=getCardBonus('burn');
+  if(burnDmg>0){
+    target.hp-=burnDmg;
+    target.burning=1;
+    target.burnTimer=30;
+  }
+  
+  // Ice slow
+  var iceBonus=getCardBonus('ice');
+  if(iceBonus>0){target.slowed=iceBonus}
+  
+  // Vampire
+  var vampHeal=Math.floor(dmg*getCardBonus('vamp'));
+  if(vampHeal>0){G.hero.hp=Math.min(G.hero.maxHp,G.hero.hp+vampHeal)}
+  
+  // Projectile trail
+  G.projectiles.push({x:G.hero.x,y:G.hero.y,tx:target.x,ty:target.y,life:8});
+  
+  spawnFloating(target.x,target.y-5,'-'+dmg,'#fff');
+  
+  if(target.hp<=0) {
+    // Kill
+    spawnDeath(target);
+    G.gold+=target.gold;
+    G.hero.xp+=target.xp;
+    G.kills++;
+    G.score+=target.gold*10;
+    G.waveMonstersLeft--;
+    
+    // Drop chance
+    var dropChance=target.id==='boss'?1:0.08;
+    if(Math.random()<dropChance){
+      var it=target.id==='boss'?
+        ITEM_TYPES[randInt(0,4)]:
+        (Math.random()<0.6?ITEM_TYPES[0]:ITEM_TYPES[2]);
+      if(addItem(it.id)) spawnFloating(target.x,target.y-20,it.icon+' '+it.name,'#ffd700');
+    }
+    
+    checkLevelUp();
+  }
+}
+
+function checkLevelUp() {
+  while(G.hero.xp>=G.hero.xpNeed){
+    G.hero.xp-=G.hero.xpNeed;
+    G.hero.lvl++;
+    G.hero.xpNeed=Math.floor(G.hero.xpNeed*1.5);
+    G.hero.maxHp+=15;
+    G.hero.hp=Math.min(G.hero.maxHp,G.hero.hp+15);
+    G.hero.atk+=2;
+    G.hero.maxMp+=10;
+    G.hero.mp=Math.min(G.hero.maxMp,G.hero.mp+10);
+    spawnFloating(G.hero.x,G.hero.y-30,'🎉 Lv.'+G.hero.lvl+'!','#ffd700');
+  }
+}
+
+// ============ UPDATE ============
+function update() {
+  if(G.phase!=='playing') return;
+  
+  var h=G.hero;
+  
+  // Invincible timer
+  if(G.invincible>0){
+    G.invincible--;
+    if(G.invincible<=0) $hudLeft.classList.remove('invincible');
+  }
+  
+  // Wave banner timer
+  if(G.waveBannerTimer>0){
+    G.waveBannerTimer--;
+    if(G.waveBannerTimer<=0) $waveBanner.classList.remove('show');
+  }
+  
+  // Attack cooldown
+  var atkSpd=1/(1+getCardBonus('spd'));
+  G.atkInterval=Math.max(18,Math.floor(48*atkSpd));
+  if(G.atkCooldown>0){G.atkCooldown--}
+  else if(G.monsters.length>0){
+    heroAttack();
+    G.atkCooldown=G.atkInterval;
+  }
+  
+  // Monster AI
+  for(var i=0;i<G.monsters.length;i++){
+    var m=G.monsters[i];
+    var speed=m.speed*(1-(m.slowed||0));
+    var dx=h.x-m.x,dy=h.y-m.y,d=Math.hypot(dx,dy)||1;
+    m.x+=dx/d*speed;
+    m.y+=dy/d*speed;
+    
+    // Slow decay
+    if(m.slowed>0){m.slowed=Math.max(0,m.slowed-0.01)}
+    
+    // Burning dot
+    if(m.burning){
+      m.burnTimer--;
+      if(m.burnTimer%10===0){m.hp-=getCardBonus('burn');spawnFloating(m.x,m.y,'-'+getCardBonus('burn')+'🔥','#f97316')}
+      if(m.burnTimer<=0){m.burning=0}
+    }
+    
+    // Melee damage
+    if(d<m.size+h.size*0.8){
+      if(G.invincible<=0){
+        var dmgTaken=Math.max(1,Math.floor(m.atk*(1-getCardBonus('def'))));
+        h.hp-=dmgTaken;
+        spawnFloating(h.x,h.y,'-'+dmgTaken,'#ef4444');
+        spawnParticles(h.x,h.y,5,'#ef4444');
+      }
+      // Knockback monster slightly
+      m.x-=dx/d*15;
+      m.y-=dy/d*15;
+      // Clamp
+      m.x=clamp(m.x,-30,CW+30);
+      m.y=clamp(m.y,-30,CH+30);
+    }
+  }
+  
+  // Remove dead monsters
+  for(var i=G.monsters.length-1;i>=0;i--){
+    if(G.monsters[i].hp<=0) G.monsters.splice(i,1);
+  }
+  
+  // Check wave clear
+  if(G.monsters.length===0 && G.waveMonstersLeft<=0){
+    G.wave++;
+    spawnWave(G.wave);
+    showWaveBanner();
+    // Heal a bit between waves
+    h.hp=Math.min(h.maxHp,h.hp+20);
+    h.mp=Math.min(h.maxMp,h.mp+20);
+  }
+  
+  // Hero death
+  if(h.hp<=0){
+    h.hp=0;
+    G.phase='over';
+    spawnParticles(h.x,h.y,30,'#ef4444');
+    showGameOver();
+  }
+  
+  // Projectiles
+  for(var i=G.projectiles.length-1;i>=0;i--){
+    G.projectiles[i].life--;
+    if(G.projectiles[i].life<=0) G.projectiles.splice(i,1);
+  }
+  
+  // Particles
+  for(var i=G.particles.length-1;i>=0;i--){
+    var p=G.particles[i];
+    p.x+=p.vx;p.y+=p.vy;p.life--;
+    if(p.life<=0) G.particles.splice(i,1);
+  }
+  
+  // Score drip
+  G.score+=G.wave;
+  
+  updateDOM();
+}
+
+// ============ RENDER ============
+function renderGameWorld() {
+  ctx.clearRect(0,0,CW,CH);
+  
+  // Background grid
+  ctx.fillStyle='#0a0a1a';
+  ctx.fillRect(0,0,CW,CH);
+  ctx.strokeStyle='rgba(139,92,246,0.06)';
+  ctx.lineWidth=1;
+  for(var x=0;x<CW;x+=30){
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();
+  }
+  for(var y=0;y<CH;y+=30){
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();
+  }
+  
+  // Particles (under entities)
+  for(var i=0;i<G.particles.length;i++){
+    var p=G.particles[i];
+    var alpha=p.life/p.maxLife;
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  
+  // Projectiles
+  for(var i=0;i<G.projectiles.length;i++){
+    var pr=G.projectiles[i];
+    var alpha=pr.life/8;
+    ctx.globalAlpha=alpha;
+    ctx.strokeStyle='#facc15';
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(pr.x,pr.y);ctx.lineTo(pr.tx,pr.ty);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  
+  // Monsters
+  for(var i=0;i<G.monsters.length;i++){
+    var m=G.monsters[i];
+    
+    // Ice effect
+    if(m.slowed>0.1){
+      ctx.strokeStyle='rgba(6,182,212,0.4)';
+      ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(m.x,m.y,m.size+3,0,Math.PI*2);ctx.stroke();
+    }
+    
+    // Body
+    var grad=ctx.createRadialGradient(m.x-2,m.y-2,0,m.x,m.y,m.size);
+    grad.addColorStop(0,lighten(m.color,0.4));
+    grad.addColorStop(0.7,m.color);
+    grad.addColorStop(1,darken(m.color,0.4));
+    ctx.fillStyle=grad;
+    ctx.beginPath();ctx.arc(m.x,m.y,m.size,0,Math.PI*2);ctx.fill();
+    
+    // Border
+    ctx.strokeStyle='rgba(255,255,255,0.2)';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(m.x,m.y,m.size,0,Math.PI*2);ctx.stroke();
+    
+    // Icon
+    ctx.font=(m.size*1.2)+'px sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(m.icon,m.x,m.y);
+    
+    // HP bar
+    var barW=m.size*2;
+    ctx.fillStyle='rgba(0,0,0,0.7)';
+    ctx.fillRect(m.x-barW/2-1,m.y-m.size-7-1,barW+2,6);
+    ctx.fillStyle='#ef4444';
+    ctx.fillRect(m.x-barW/2,m.y-m.size-7,barW,4);
+    ctx.fillStyle='#22c55e';
+    ctx.fillRect(m.x-barW/2,m.y-m.size-7,barW*(m.hp/m.maxHp),4);
+  }
+  
+  // Hero
+  var h=G.hero;
+  
+  // Invincible glow
+  if(G.invincible>0){
+    ctx.shadowColor='#ffd700';
+    ctx.shadowBlur=15+Math.sin(Date.now()/100)*5;
+  }
+  
+  // Body
+  var hgrad=ctx.createRadialGradient(h.x-3,h.y-3,0,h.x,h.y,16);
+  hgrad.addColorStop(0,'#818cf8');
+  hgrad.addColorStop(0.6,'#4f46e5');
+  hgrad.addColorStop(1,'#1e1b4b');
+  ctx.fillStyle=hgrad;
+  ctx.beginPath();ctx.arc(h.x,h.y,16,0,Math.PI*2);ctx.fill();
+  
+  // Border
+  ctx.strokeStyle='#a5b4fc';
+  ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(h.x,h.y,16,0,Math.PI*2);ctx.stroke();
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;
+  
+  // Icon
+  ctx.font='20px sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('⚔️',h.x,h.y);
+  
+  // Attack range indicator (subtle)
+  ctx.strokeStyle='rgba(165,180,252,0.15)';
+  ctx.setLineDash([4,8]);
+  ctx.beginPath();ctx.arc(h.x,h.y,100,0,Math.PI*2);ctx.stroke();
+  ctx.setLineDash([]);
+  
+  ctx.textAlign='start';ctx.textBaseline='alphabetic';
+}
+
+function lighten(hex,amt) {
+  var num=parseInt(hex.slice(1),16);
+  var r=Math.min(255,((num>>16)&255)+255*amt);
+  var g=Math.min(255,((num>>8)&255)+255*amt);
+  var b=Math.min(255,(num&255)+255*amt);
+  return 'rgb('+Math.floor(r)+','+Math.floor(g)+','+Math.floor(b)+')';
+}
+function darken(hex,amt) {
+  var num=parseInt(hex.slice(1),16);
+  var r=Math.max(0,((num>>16)&255)*(1-amt));
+  var g=Math.max(0,((num>>8)&255)*(1-amt));
+  var b=Math.max(0,(num&255)*(1-amt));
+  return 'rgb('+Math.floor(r)+','+Math.floor(g)+','+Math.floor(b)+')';
+}
+
+// ============ DOM UI UPDATE ============
+function updateDOM() {
+  var h=G.hero;
+  
+  // HP bar
+  var hpPct=Math.max(0,Math.floor((h.hp/h.maxHp)*100));
+  $hpFill.style.width=hpPct+'%';
+  $hpText.textContent=Math.ceil(h.hp)+'/'+h.maxHp;
+  
+  // MP bar
+  var mpPct=Math.max(0,Math.floor((h.mp/h.maxMp)*100));
+  $mpFill.style.width=mpPct+'%';
+  $mpText.textContent=Math.ceil(h.mp)+'/'+h.maxMp;
+  
+  // Wave / gold
+  $waveLabel.textContent='🌊 第'+G.wave+'波';
+  $goldLabel.textContent='💰 '+G.gold;
+  $killsLabel.textContent='💀 击杀:'+G.kills;
+  
+  // Card slots
+  var cardHTML='';
+  for(var i=0;i<6;i++){
+    if(i<G.cards.length){
+      var c=G.cards[i];
+      cardHTML+='<div class="card-slot" onclick="clickCard('+i+')" style="border-color:'+c.color+'">'+
+        '<div class="card-icon">'+c.icon+'</div>'+
+        '<div class="card-name">'+c.name+'</div>'+
+        '<div class="card-level">Lv.'+c.level+'</div>'+
+        '</div>';
+    } else {
+      cardHTML+='<div class="card-slot empty">'+
+        '<div style="font-size:16px;color:#333">+</div>'+
+        '</div>';
+    }
+  }
+  $cardSlots.innerHTML=cardHTML;
+  
+  // Item slots
+  var itemHTML='';
+  for(var i=0;i<5;i++){
+    if(i<G.items.length){
+      var it=G.items[i];
+      itemHTML+='<div class="item-slot" onclick="useItem('+i+')" style="cursor:pointer;border-color:rgba(255,215,0,0.4)">'+
+        '<div class="item-icon">'+it.icon+'</div>'+
+        '<div class="item-name">'+it.name+'</div>'+
+        '</div>';
+    } else {
+      itemHTML+='<div class="item-slot empty"></div>';
+    }
+  }
+  $itemSlots.innerHTML=itemHTML;
+  
+  // Draw button
+  $btnDraw.disabled=(G.gold<20||G.cards.length>=6);
+  $btnDraw.textContent=G.cards.length>=6?'🎴 已满':'🎴 抽卡 ('+G.gold+'💰)';
+}
+
+// ============ GAME OVER ============
+function showGameOver() {
+  $gameover.style.display='flex';
+  var s=G.score;
+  var grade=s>5000?'S':s>3000?'A':s>1500?'B':'C';
+  var gColor=grade==='S'?'#ffd700':grade==='A'?'#ef4444':grade==='B'?'#8b5cf6':'#aaa';
+  document.getElementById('grade-text').textContent=grade;
+  document.getElementById('grade-text').style.color=gColor;
+  document.getElementById('go-score').textContent=G.score;
+  document.getElementById('go-wave').textContent=G.wave;
+  document.getElementById('go-kills').textContent=G.kills;
+  document.getElementById('go-gold').textContent=G.gold;
+}
+
+function restartGame() {
+  initG();
+  $gameover.style.display='none';
+  $pauseOverlay.style.display='none';
+  $sellOverlay.style.display='none';
+  $drawResult.style.display='none';
+  $waveBanner.classList.remove('show');
+  $hudLeft.classList.remove('invincible');
+  $floating.innerHTML='';
+  spawnWave(1);
+  showWaveBanner();
+  updateDOM();
+}
+
+function togglePause() {
+  if(G.phase==='over') return;
+  if(G.phase==='playing'){
+    G.phase='paused';
+    $pauseOverlay.style.display='flex';
+  } else if(G.phase==='paused'){
+    G.phase='playing';
+    $pauseOverlay.style.display='none';
+  }
+}
+
+function showToast(msg) {
+  $toast.textContent=msg;
+  $toast.classList.add('show');
+  clearTimeout($toast._t);
+  $toast._t=setTimeout(function(){$toast.classList.remove('show')},1500);
+}
+
+// ============ INPUT ============
+var touchActive=false;
+
+canvas.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  if(G.phase!=='playing') return;
+  touchActive=true;
+  moveHeroToTouch(e);
+},{passive:false});
+
+canvas.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  if(!touchActive||G.phase!=='playing') return;
+  moveHeroToTouch(e);
+},{passive:false});
+
+canvas.addEventListener('touchend',function(e){
+  touchActive=false;
+});
+
+canvas.addEventListener('mousedown',function(e){
+  if(G.phase!=='playing') return;
+  touchActive=true;
+  moveHeroToMouse(e);
+});
+
+canvas.addEventListener('mousemove',function(e){
+  if(!touchActive||G.phase!=='playing') return;
+  moveHeroToMouse(e);
+});
+
+canvas.addEventListener('mouseup',function(){touchActive=false});
+
+function moveHeroToTouch(e) {
+  var t=e.touches[0];
+  var rect=canvas.getBoundingClientRect();
+  var scaleX=CW/rect.width;
+  var scaleY=CH/rect.height;
+  G.hero.x=clamp((t.clientX-rect.left)*scaleX,20,CW-20);
+  G.hero.y=clamp((t.clientY-rect.top)*scaleY,20,CH-20);
+}
+
+function moveHeroToMouse(e) {
+  var rect=canvas.getBoundingClientRect();
+  var scaleX=CW/rect.width;
+  var scaleY=CH/rect.height;
+  G.hero.x=clamp((e.clientX-rect.left)*scaleX,20,CW-20);
+  G.hero.y=clamp((e.clientY-rect.top)*scaleY,20,CH-20);
+}
+
+// Sell overlay buttons
+document.getElementById('btn-sell-confirm').onclick=function(){sellCard(G.sellTarget)};
+document.getElementById('btn-sell-cancel').onclick=function(){G.sellTarget=-1;$sellOverlay.style.display='none'};
+
+// ============ GAME LOOP ============
+var lastTime=0;
+function gameLoop(timestamp) {
+  if(G.phase==='playing'){
+    var dt=timestamp-lastTime;
+    // Run updates at ~60fps equivalent
+    var steps=Math.min(Math.floor(dt/16),5);
+    for(var s=0;s<steps;s++) update();
+    lastTime=timestamp-(dt%16);
+  }
+  renderGameWorld();
+  requestAnimationFrame(gameLoop);
+}
+
+// ============ INIT ============
+function init() {
+  lastTime=performance.now();
+  spawnWave(1);
+  showWaveBanner();
+  updateDOM();
+  requestAnimationFrame(gameLoop);
+}
+
+// Handle sell overlay click outside
+document.addEventListener('click',function(e){
+  if($sellOverlay.style.display==='flex'&&!$sellOverlay.contains(e.target)&&!e.target.closest('.card-slot')){
+    G.sellTarget=-1;
+    $sellOverlay.style.display='none';
+  }
+});
+
+init();
+
+console.log('🎮 不完美作战 ready! v5-dom');
+console.log('💡 点击画面移动英雄 | 自动攻击 | 消灭怪物获取金币');
+console.log('🃏 金币抽卡 | 🎒 使用道具 | 🌊 波次递增');
 </script>
-
 </body>
 </html>
