@@ -2,26 +2,37 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>不完美作战 v5.0</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+html,body{
+    width:100%;height:100%;
+    /* 100dvh 兼容动态视口，fallback 到 100vh */
+    min-height:100vh;min-height:100dvh;
+    overflow:hidden;
+    position:fixed;top:0;left:0;
+}
 body{
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    background:#0a0a1a;color:#fff;overflow:hidden;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    min-height:100vh;min-height:100dvh;
+    background:#0a0a1a;color:#fff;
     -webkit-tap-highlight-color:transparent;
     user-select:none;-webkit-user-select:none;
     touch-action:manipulation;
+    /* Safe area padding — iOS notch + bottom bar */
+    padding:env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
 }
 
 /* === Start Screen === */
 #start-screen{
-    position:fixed;top:0;left:0;width:100%;height:100%;
+    position:fixed;top:0;left:0;right:0;bottom:0;
+    width:100%;height:100%;height:100dvh;
     background:linear-gradient(135deg,#0a0a1a 0%,#1a1a3a 50%,#0a0a1a 100%);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     z-index:1000;transition:opacity 0.4s,transform 0.4s;
+    /* Inherit safe area from body */
 }
 #start-screen.hidden{opacity:0;pointer-events:none;transform:scale(1.05)}
 .game-title{
@@ -66,9 +77,14 @@ body{
 .start-btn:disabled{opacity:0.35;transform:none}
 
 /* === Game Container === */
-#game-container{position:fixed;top:0;left:0;width:100%;height:100%;display:none}
+#game-container{
+    position:fixed;top:0;left:0;right:0;bottom:0;
+    width:100%;height:100%;height:100dvh;
+    display:none;
+    /* Safe area: let canvas extend under notch/bar, UI handles positioning */
+}
 #game-container.active{display:block}
-#game-canvas{width:100%;height:100%;touch-action:none}
+#game-canvas{width:100%;height:100%;display:block;touch-action:none}
 </style>
 </head>
 <body>

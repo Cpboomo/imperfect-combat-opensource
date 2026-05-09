@@ -14,22 +14,38 @@
  *   GAME ZONE  (15-70%):  The game world
  *   ITEM ZONE  (70-78%):  5-slot item bar
  *   CARD ZONE  (78-93%):  6-slot card bar + draw button
- *   SAFE GAP   (93-100%): Reserved for browser toolbar
+ *   SAFE GAP   (93-100%): Reserved for browser toolbar / home indicator
  *
- * On mobile in-app browsers (Feishu/WeChat), the bottom ~7% is
- * often covered by browser chrome. We shift UI up accordingly.
+ * Reads CSS env(safe-area-inset-bottom) if available (iOS Safari),
+ * otherwise falls back to a percentage-based estimate.
  */
 function uiLayout(canvasW, canvasH) {
     var baseScale = Math.min(canvasW / 360, canvasH / 640);
 
-    // Reserve bottom safe area (7% of canvas height, min 30px physical)
-    // This accounts for browser toolbars in Feishu/WeChat embedded browsers
-    var safeBottom = Math.max(canvasH * 0.07, 30);
-    var usableH = canvasH - safeBottom;
+    // Dynamic safe area detection
+    var safeBottomPx = 0;
+    try {
+        // Read CSS env variable if supported (iOS 11+, Safari)
+        var cssSafe = getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom');
+        if (!cssSafe) {
+            // Try reading from body padding
+            var bodyPad = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
+            safeBottomPx = bodyPad;
+        } else {
+            safeBottomPx = parseInt(cssSafe) || 0;
+        }
+    } catch(e) {}
+
+    // Fallback: reserve 5% of canvas height, min 24px, max 60px
+    if (safeBottomPx < 10) {
+        safeBottomPx = Math.min(Math.max(canvasH * 0.05, 24), 60);
+    }
+
+    var usableH = canvasH - safeBottomPx;
 
     return {
         scale: baseScale,
-        safeBottom: safeBottom,
+        safeBottom: safeBottomPx,
         // Card slots (bottom row, centered) — raised into safe zone
         cardW: 48 * baseScale,
         cardH: 60 * baseScale,
