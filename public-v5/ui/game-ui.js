@@ -360,7 +360,7 @@ function renderCultivationUI(ctx) {
 
     var L2 = uiLayout(ctx.canvas.width, ctx.canvas.height);
     var cx = L2.cssW / 2;
-    var s = L.scale;
+    var s = L2.scale;
 
     // Compact floating panel — centered, constrained to canvas
     var uw = Math.min(280 * s, L2.cssW * 0.7);
