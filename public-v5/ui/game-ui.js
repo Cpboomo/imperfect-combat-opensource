@@ -21,43 +21,31 @@
  * otherwise falls back to a percentage-based estimate.
  */
 function uiLayout(canvasW, canvasH) {
-    // canvasW/H are ctx.canvas dimensions (PHYSICAL pixels)
+    // Canvas buffer is fixed at 390×844 phone portrait resolution
     // All drawing is in CSS pixels (setTransform scales by DPR)
-    // So we must compute everything in CSS pixels
     var dpr = window.devicePixelRatio || 1;
     var cssW = canvasW / dpr;
     var cssH = canvasH / dpr;
     var baseScale = Math.min(cssW / 360, cssH / 640);
 
-    // --- Top safe area (iPhone notch / status bar) ---
-    var safeTopPx = 0;
-    try {
-        safeTopPx = parseInt(getComputedStyle(document.body).paddingTop) || 0;
-    } catch(e) {}
-    if (safeTopPx < 10) {
-        safeTopPx = Math.max(cssH * 0.05, 20);
-    }
-
-    // --- Bottom safe area ---
-    var safeBottomPx = 0;
-    try {
-        var cssSafe = getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom');
-        if (cssSafe) safeBottomPx = parseInt(cssSafe) || 0;
-    } catch(e) {}
-    if (safeBottomPx < 10) {
-        try {
-            safeBottomPx = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
-        } catch(e) {}
-    }
-
+    // Detect Feishu / WeChat in-app browser
     var ua = navigator.userAgent || '';
     var isInApp = /Lark|Feishu|MicroMessenger|WeChat|DingTalk/i.test(ua);
 
-    if (safeBottomPx < 10) {
-        var pct2 = isInApp ? 0.12 : 0.07;
-        safeBottomPx = Math.max(cssH * pct2, isInApp ? 55 : 30);
+    // --- Top safe area ---
+    // System status bar (~44px) + possible browser nav bar (~44px in Feishu)
+    var safeTopPx = parseInt(getComputedStyle(document.body).paddingTop) || 0;
+    if (safeTopPx < 10) safeTopPx = 44; // iPhone notch default
+    if (isInApp && safeTopPx < 60) safeTopPx = Math.max(safeTopPx, 60); // Feishu top bar
+
+    // --- Bottom safe area ---
+    // Feishu bottom toolbar ~100px, WeChat ~50px, home indicator ~34px
+    var safeBottomPx = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
+    if (isInApp) {
+        safeBottomPx = Math.max(safeBottomPx, 100); // Feishu/WeChat bottom bar
+    } else if (safeBottomPx < 10) {
+        safeBottomPx = Math.max(cssH * 0.06, 30); // Home indicator / browser bar
     }
-    if (isInApp && safeBottomPx < 55) safeBottomPx = 55;
 
     var usableH = cssH - safeBottomPx;
 

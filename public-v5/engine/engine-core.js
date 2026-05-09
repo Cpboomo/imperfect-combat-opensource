@@ -103,18 +103,14 @@ function engineInit(container) {
 
     engineCtx = engineCanvas.getContext('2d');
 
-    // Apply engine resize
+    // Apply engine resize (uses fixed phone portrait resolution)
     engineResize();
 
-    // Listen for container resize
-    if (typeof ResizeObserver !== 'undefined') {
-        new ResizeObserver(function () {
-            engineResize();
-        }).observe(container);
-    } else {
-        // Fallback to window resize
-        window.addEventListener('resize', engineResize);
-    }
+    // Listen for window resize and orientation change
+    window.addEventListener('resize', engineResize);
+    window.addEventListener('orientationchange', function () {
+        setTimeout(engineResize, 300);
+    });
 
     engineState.running = true;
 
@@ -124,25 +120,43 @@ function engineInit(container) {
 /**
  * Resize canvas to fill container, respecting pixel ratio.
  * Called automatically on init and when container resizes.
+ * 
+ * Uses FIXED phone portrait resolution (390×844) for consistent layout.
+ * Canvas scales proportionally to fit the viewport, centered with letterboxing.
  */
 function engineResize() {
     if (!engineCanvas) return;
 
-    var parent = engineCanvas.parentElement;
-    if (!parent) return;
-
-    var w = parent.clientWidth;
-    var h = parent.clientHeight;
+    var FIXED_W = 390;
+    var FIXED_H = 844;
     var dpr = window.devicePixelRatio || 1;
 
-    engineState.pixelRatio = dpr;
-    engineState.width = w;
-    engineState.height = h;
+    // Scale to fit viewport while maintaining aspect ratio
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var scaleX = vw / FIXED_W;
+    var scaleY = vh / FIXED_H;
+    var displayScale = Math.min(scaleX, scaleY);
 
-    engineCanvas.width = w * dpr;
-    engineCanvas.height = h * dpr;
-    engineCanvas.style.width = w + 'px';
-    engineCanvas.style.height = h + 'px';
+    var displayW = Math.round(FIXED_W * displayScale);
+    var displayH = Math.round(FIXED_H * displayScale);
+    var offsetX = Math.round((vw - displayW) / 2);
+    var offsetY = Math.round((vh - displayH) / 2);
+
+    engineState.pixelRatio = dpr;
+    engineState.width = FIXED_W;
+    engineState.height = FIXED_H;
+
+    // Canvas buffer: fixed logical size × DPR
+    engineCanvas.width = FIXED_W * dpr;
+    engineCanvas.height = FIXED_H * dpr;
+
+    // CSS display: scaled to fit viewport, centered
+    engineCanvas.style.width = displayW + 'px';
+    engineCanvas.style.height = displayH + 'px';
+    engineCanvas.style.position = 'absolute';
+    engineCanvas.style.left = offsetX + 'px';
+    engineCanvas.style.top = offsetY + 'px';
 
     // Scale the context so all drawing is in CSS-pixel coords
     engineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);

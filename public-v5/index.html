@@ -81,10 +81,11 @@ body{
     position:fixed;top:0;left:0;right:0;bottom:0;
     width:100%;height:100%;height:100dvh;
     display:none;
-    /* Safe area: let canvas extend under notch/bar, UI handles positioning */
+    background:#0a0a1a; /* fills letterbox area */
+    overflow:hidden;
 }
 #game-container.active{display:block}
-#game-canvas{width:100%;height:100%;display:block;touch-action:none}
+#game-canvas{display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
 </style>
 </head>
 <body>
@@ -133,7 +134,7 @@ body{
 <script src="logic/game-heroes.js"></script>
 
 <!-- UI Layer -->
-<script src="ui/game-ui.js?v=5"></script>
+<script src="ui/game-ui.js?v=6"></script>
 <script src="ui/game-render.js"></script>
 
 <!-- Entry -->
