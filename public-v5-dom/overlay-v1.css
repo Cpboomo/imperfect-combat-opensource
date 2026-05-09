@@ -1,0 +1,578 @@
+/* overlay-v1.css — DOM-based game UI overlay */
+/* Mobile-first: 390×844 logical, scaled via CSS transform */
+
+:root {
+  --bg-dark: #0a0a1a;
+  --bg-panel: rgba(4, 4, 16, 0.93);
+  --bg-hud: rgba(0, 0, 0, 0.55);
+  --purple: #8b5cf6;
+  --purple-light: #a78bfa;
+  --gold: #ffd700;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --red: #ef4444;
+  --orange: #f59e0b;
+  --cyan: #06b6d4;
+  --white: rgba(255,255,255,0.9);
+  --white-dim: rgba(255,255,255,0.5);
+  --white-faint: rgba(255,255,255,0.15);
+  --black-overlay: rgba(0,0,0,0.7);
+}
+
+/* ==================== Overlay Container ==================== */
+#game-ui-overlay {
+  position: fixed;
+  left: 0; top: 0;
+  width: 390px; height: 844px;
+  transform-origin: top left;
+  pointer-events: none;
+  z-index: 100;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--white);
+  font-size: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Interactive elements get pointer events (others pass through to canvas) */
+.ui-interactive,
+.ui-interactive * {
+  pointer-events: auto;
+}
+
+/* ==================== HUD Bar ==================== */
+#hud {
+  position: absolute;
+  top: 60px; /* safe area top */
+  left: 0;
+  width: 390px;
+  height: 40px;
+  background: var(--bg-hud);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 6px;
+}
+
+#hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 148px;
+  flex-shrink: 0;
+}
+
+#hp-container, #mp-container {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+
+#hp-container { width: 148px; }
+#mp-container { width: 118px; height: 11px; }
+
+#hp-fill, #mp-fill {
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+#hp-text, #mp-text {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#mp-text { font-size: 8px; }
+
+#hud-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 0;
+}
+
+#wave-text {
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  white-space: nowrap;
+}
+
+#gold-text {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#kills-text {
+  font-size: 8px;
+  color: var(--white-dim);
+  white-space: nowrap;
+}
+
+#hud-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+#btn-pause, #btn-blueprint {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+#btn-pause:active, #btn-blueprint:active {
+  background: rgba(255,255,255,0.12);
+}
+
+/* ==================== Bottom Panel ==================== */
+#bottom-panel {
+  position: absolute;
+  bottom: 100px; /* Feishu toolbar safe area */
+  left: 0;
+  width: 390px;
+  height: 210px;
+  background: var(--bg-panel);
+  border-top: 2px solid rgba(139, 92, 246, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 6px;
+}
+
+/* Top glow line */
+#bottom-panel::before {
+  content: '';
+  position: absolute;
+  top: 2px; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(180deg, rgba(139,92,246,0.3), transparent);
+}
+
+/* ==================== Item Slots ==================== */
+#items-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#items-row .label {
+  font-size: 9px;
+  color: rgba(255,255,255,0.2);
+  writing-mode: vertical-lr;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+#item-slots {
+  display: flex;
+  gap: 6px;
+}
+
+.item-slot {
+  width: 48px; height: 48px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.item-slot:active {
+  transform: scale(0.92);
+  border-color: rgba(255,255,255,0.4);
+}
+
+.item-slot.has-item {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.25);
+  box-shadow: 0 0 6px rgba(255,255,255,0.05);
+}
+
+.item-slot .item-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.item-slot .item-name {
+  font-size: 7px;
+  color: var(--white-dim);
+  margin-top: 2px;
+  max-width: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.item-slot .slot-num {
+  font-size: 10px;
+  color: rgba(255,255,255,0.1);
+}
+
+/* ==================== Card Slots ==================== */
+#cards-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+#cards-row .label {
+  font-size: 9px;
+  color: rgba(255,255,255,0.2);
+  writing-mode: vertical-lr;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+#card-slots {
+  display: flex;
+  gap: 6px;
+}
+
+.card-slot {
+  width: 56px; height: 70px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card-slot:active {
+  transform: scale(0.94);
+}
+
+.card-slot.has-card {
+  background: rgba(255,255,255,0.05);
+  border-width: 2px;
+}
+
+/* Rarity colors */
+.card-slot.rarity-1 { border-color: #555; }
+.card-slot.rarity-2 { border-color: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.15); }
+.card-slot.rarity-3 { border-color: var(--blue); box-shadow: 0 0 10px rgba(59,130,246,0.2); }
+.card-slot.rarity-4 { border-color: var(--purple); box-shadow: 0 0 14px rgba(139,92,246,0.25); }
+.card-slot.rarity-5 { border-color: var(--gold); box-shadow: 0 0 18px rgba(255,215,0,0.3); }
+
+.card-slot .card-icon {
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.card-slot .card-name {
+  font-size: 7px;
+  color: var(--white-dim);
+  max-width: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.card-slot .card-level {
+  font-size: 7px;
+  color: var(--gold);
+  margin-top: 1px;
+}
+
+.card-slot .slot-num {
+  font-size: 13px;
+  color: rgba(255,255,255,0.1);
+}
+
+/* Overflow highlight */
+.card-slot.overflow-highlight {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 12px rgba(239,68,68,0.4) !important;
+}
+
+/* ==================== Draw Button ==================== */
+#btn-draw {
+  width: 240px; height: 50px;
+  border-radius: 10px;
+  border: 2px solid var(--gold);
+  background: linear-gradient(135deg, var(--purple), var(--purple-light), var(--purple));
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  transition: transform 0.15s, opacity 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+#btn-draw:active {
+  transform: scale(0.95);
+}
+
+#btn-draw small {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 0;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+}
+
+#btn-draw.affordable {
+  animation: drawPulse 2s ease-in-out infinite;
+}
+
+#btn-draw.unaffordable {
+  background: rgba(139,92,246,0.2);
+  border-color: rgba(139,92,246,0.25);
+  opacity: 0.6;
+}
+
+@keyframes drawPulse {
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(139,92,246,0.3), 0 0 20px rgba(139,92,246,0.1);
+  }
+  50% { 
+    box-shadow: 0 0 16px rgba(139,92,246,0.5), 0 0 35px rgba(139,92,246,0.2);
+  }
+}
+
+/* ==================== Overlay Panels (centered modals) ==================== */
+.panel-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 390px; height: 844px;
+  background: var(--black-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.panel-box {
+  background: #151530;
+  border: 2px solid var(--purple);
+  border-radius: 14px;
+  padding: 20px;
+  width: 320px;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(139,92,246,0.2);
+}
+
+.panel-box h3 {
+  font-size: 15px;
+  color: var(--white);
+  margin: 0 0 16px;
+  letter-spacing: 1px;
+}
+
+/* Talent choices */
+.talent-choice {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+  min-height: 44px;
+}
+
+.talent-choice:active {
+  background: rgba(139,92,246,0.1);
+  border-color: var(--purple);
+}
+
+.talent-choice .talent-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.talent-choice .talent-desc {
+  font-size: 10px;
+  color: var(--white-dim);
+}
+
+/* Cultivation panel */
+#cultivation-panel .panel-box {
+  padding: 16px;
+}
+
+.cult-weapon-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+
+.cult-weapon-stats {
+  font-size: 10px;
+  color: var(--green);
+  margin-bottom: 12px;
+}
+
+.cult-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.cult-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--purple);
+  background: rgba(139,92,246,0.15);
+  color: var(--white);
+  font-size: 12px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.15s;
+}
+
+.cult-btn:active {
+  background: rgba(139,92,246,0.3);
+}
+
+.cult-l2-choice {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  min-height: 36px;
+  transition: background 0.15s;
+}
+
+.cult-l2-choice:active {
+  background: rgba(139,92,246,0.1);
+}
+
+/* Blueprint panel */
+#blueprint-panel .panel-box {
+  text-align: left;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+#blueprint-panel h3 {
+  text-align: center;
+}
+
+#btn-close-blueprint {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.4);
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blueprint-section {
+  font-size: 10px;
+  color: var(--white-dim);
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.blueprint-section strong {
+  color: var(--white);
+}
+
+/* Game over panel */
+#gameover-panel .grade {
+  font-size: 28px;
+  font-weight: 900;
+  margin: 8px 0;
+}
+
+#gameover-panel .stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--white-dim);
+  padding: 4px 0;
+}
+
+#gameover-panel .stat-row span:last-child {
+  color: var(--white);
+}
+
+#btn-retry {
+  width: 200px; height: 44px;
+  border-radius: 10px;
+  border: none;
+  background: var(--cyan);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: transform 0.15s;
+}
+
+#btn-retry:active {
+  transform: scale(0.95);
+}
+
+/* ==================== Drag visual ==================== */
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 300;
+  opacity: 0.85;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
