@@ -133,14 +133,22 @@ function renderCardSlots(ctx, L) {
     var totalW = 6 * L.cardW + 5 * L.cardGap;
     var startX = (ctx.canvas.width - totalW) / 2;
 
-    // --- Draw card button (right of card row) ---
+    // --- Bottom UI backdrop (dark strip to separate from grid) ---
+    var barTop = L.cardY - 8 * L.scale;
+    var barH = (L.cardH + 12 * L.scale);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, barTop, ctx.canvas.width, barH);
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(0, barTop, ctx.canvas.width, 1);
+
+    // --- Draw card button (always visible) ---
     var canDraw = G.gold >= CARD_DRAW_COST && stateFindEmptyCardSlot() >= 0;
     var drawBtnW = L.cardW * 1.2, drawBtnH = L.cardH;
     var drawBtnX = startX + totalW + 8 * L.scale;
     var drawBtnY = L.cardY;
 
+    fillRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, canDraw ? COLORS.GOLD_20 : 'rgba(255,255,255,0.04)');
     if (canDraw && G.overflowReplacing < 0) {
-        fillRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, COLORS.GOLD_20);
         strokeRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, COLORS.GOLD, 2.5);
         drawOutlineText(ctx, '抽\n卡', drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2 - 6, L.fsSmall, COLORS.GOLD, COLORS.BG_DARK, 'center');
         drawOutlineText(ctx, '💰' + CARD_DRAW_COST, drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2 + 12, L.fsMini, COLORS.GOLD, COLORS.BG_DARK, 'center');
@@ -150,8 +158,10 @@ function renderCardSlots(ctx, L) {
         var pulse = Math.sin(window._drawBtnPhase) * 0.3 + 0.7;
         strokeRoundRect(ctx, drawBtnX - 1, drawBtnY - 1, drawBtnW + 2, drawBtnH + 2, 7, COLORS.GOLD, 1.5 + pulse);
         window._drawCardRect = {x:drawBtnX, y:drawBtnY, w:drawBtnW, h:drawBtnH};
-    } else if (G.overflowReplacing < 0) {
-        window._drawCardRect = null;
+    } else {
+        strokeRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, 'rgba(255,255,255,0.1)', 1);
+        drawOutlineText(ctx, '💰' + CARD_DRAW_COST, drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2, L.fsMini, 'rgba(255,255,255,0.2)', COLORS.BG_DARK, 'center');
+        window._drawCardRect = {x:drawBtnX, y:drawBtnY, w:drawBtnW, h:drawBtnH};
     }
 
     for (var i = 0; i < 6; i++) {
@@ -187,7 +197,10 @@ function renderCardSlots(ctx, L) {
                 drawOutlineText(ctx, '💲' + (CARD_SELL_BACK[card.rarity]||5), dx + w/2, dy - popH/2 + 18, 8, COLORS.GOLD, COLORS.BG_DARK, 'center');
             }
         } else {
-            strokeRoundRect(ctx, dx, dy, w, h, 4, COLORS.WHITE_06, 1);
+            // Empty slot — visible placeholder
+            fillRoundRect(ctx, dx, dy, w, h, 4, 'rgba(255,255,255,0.04)');
+            strokeRoundRect(ctx, dx, dy, w, h, 4, 'rgba(255,255,255,0.12)', 1);
+            drawOutlineText(ctx, (i + 1), dx + w/2, dy + h/2 + 2, 10, 'rgba(255,255,255,0.08)', COLORS.BG_DARK, 'center');
         }
 
         // Overflow replacing glow
@@ -212,6 +225,12 @@ function renderItemSlots(ctx, L) {
     var totalW = 5 * L.itemW + 4 * L.itemGap;
     var startX = (ctx.canvas.width - totalW) / 2;
 
+    // Item bar backdrop
+    var barTop = L.itemY - 4 * L.scale;
+    var barH = L.itemH + 8 * L.scale;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, barTop, ctx.canvas.width, barH);
+
     for (var i = 0; i < 5; i++) {
         var sx = startX + i * (L.itemW + L.itemGap);
         var sy = L.itemY;
@@ -223,7 +242,9 @@ function renderItemSlots(ctx, L) {
             drawOutlineText(ctx, item.icon || '?', sx + L.itemW/2, sy + L.itemH/2 - 3, 13, COLORS.WHITE, COLORS.BG_DARK, 'center');
             drawOutlineText(ctx, (item.name||'').slice(0,3), sx + L.itemW/2, sy + L.itemH - 6, 6, COLORS.WHITE_30, COLORS.BG_DARK, 'center');
         } else {
-            strokeRoundRect(ctx, sx, sy, L.itemW, L.itemH, 3, COLORS.WHITE_06, 1);
+            fillRoundRect(ctx, sx, sy, L.itemW, L.itemH, 3, 'rgba(255,255,255,0.03)');
+            strokeRoundRect(ctx, sx, sy, L.itemW, L.itemH, 3, 'rgba(255,255,255,0.08)', 1);
+            drawOutlineText(ctx, (i+1), sx + L.itemW/2, sy + L.itemH/2 + 2, 8, 'rgba(255,255,255,0.06)', COLORS.BG_DARK, 'center');
         }
     }
 }
