@@ -109,12 +109,12 @@ function cardsUpdate(dt) {
         var px = inputState.pointerScreenX;
         var py = inputState.pointerScreenY;
 
-        // Use responsive layout (not hardcoded coords)
+        // Use responsive layout (all in CSS pixels)
         var cw = engineCanvas ? engineCanvas.width : 360;
         var ch = engineCanvas ? engineCanvas.height : 640;
         var L = uiLayout(cw, ch);
         var totalW = 6 * L.cardW + 5 * L.cardGap;
-        var startX = (cw - totalW) / 2;
+        var startX = (L.cssW - totalW) / 2;
 
         for (var i = 0; i < 6; i++) {
             var sx = startX + i * (L.cardW + L.cardGap);

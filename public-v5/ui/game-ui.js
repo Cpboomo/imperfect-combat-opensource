@@ -21,7 +21,13 @@
  * otherwise falls back to a percentage-based estimate.
  */
 function uiLayout(canvasW, canvasH) {
-    var baseScale = Math.min(canvasW / 360, canvasH / 640);
+    // canvasW/H are ctx.canvas dimensions (PHYSICAL pixels)
+    // All drawing is in CSS pixels (setTransform scales by DPR)
+    // So we must compute everything in CSS pixels
+    var dpr = window.devicePixelRatio || 1;
+    var cssW = canvasW / dpr;
+    var cssH = canvasH / dpr;
+    var baseScale = Math.min(cssW / 360, cssH / 640);
 
     // --- Top safe area (iPhone notch / status bar) ---
     var safeTopPx = 0;
@@ -29,9 +35,7 @@ function uiLayout(canvasW, canvasH) {
         safeTopPx = parseInt(getComputedStyle(document.body).paddingTop) || 0;
     } catch(e) {}
     if (safeTopPx < 10) {
-        // Estimate: 5% of CSS height, min 20px for status bar
-        var dpr = window.devicePixelRatio || 1;
-        safeTopPx = Math.max((canvasH / dpr) * 0.05, 20);
+        safeTopPx = Math.max(cssH * 0.05, 20);
     }
 
     // --- Bottom safe area ---
@@ -40,7 +44,6 @@ function uiLayout(canvasW, canvasH) {
         var cssSafe = getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom');
         if (cssSafe) safeBottomPx = parseInt(cssSafe) || 0;
     } catch(e) {}
-
     if (safeBottomPx < 10) {
         try {
             safeBottomPx = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
@@ -51,16 +54,17 @@ function uiLayout(canvasW, canvasH) {
     var isInApp = /Lark|Feishu|MicroMessenger|WeChat|DingTalk/i.test(ua);
 
     if (safeBottomPx < 10) {
-        var dpr2 = window.devicePixelRatio || 1;
-        var cssH2 = canvasH / dpr2;
-        var pct = isInApp ? 0.12 : 0.07;
-        safeBottomPx = Math.max(cssH2 * pct, isInApp ? 55 : 30);
+        var pct2 = isInApp ? 0.12 : 0.07;
+        safeBottomPx = Math.max(cssH * pct2, isInApp ? 55 : 30);
     }
     if (isInApp && safeBottomPx < 55) safeBottomPx = 55;
 
-    var usableH = canvasH - safeBottomPx;
+    var usableH = cssH - safeBottomPx;
 
     return {
+        // CSS pixel dimensions of the viewport
+        cssW: cssW,
+        cssH: cssH,
         scale: baseScale,
         safeTop: safeTopPx,
         safeBottom: safeBottomPx,
@@ -80,7 +84,7 @@ function uiLayout(canvasW, canvasH) {
         barH: 12 * baseScale,
         barX: 6 * baseScale,
         // Top-right info
-        infoX: canvasW - 6 * baseScale,
+        infoX: cssW - 6 * baseScale,
         // Font sizes
         fsTitle: Math.max(10, 13 * baseScale),
         fsBody: Math.max(9, 11 * baseScale),
@@ -115,7 +119,7 @@ function renderHUD(ctx, L) {
     // --- Top backdrop strip (below status bar) ---
     var topH = L.safeTop + 30 * L.scale;
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(0, L.safeTop, ctx.canvas.width, topH - L.safeTop);
+    ctx.fillRect(0, L.safeTop, L.cssW, topH - L.safeTop);
 
     // --- HP bar ---
     var hpPct = p.hp / p.maxHp;
@@ -159,7 +163,7 @@ function renderBlueprintToggle(ctx, L) {
         return;
     }
     // Fixed position near right edge, below wave info area
-    var btnX = ctx.canvas.width - 34 * L.scale;
+    var btnX = L.cssW - 34 * L.scale;
     var btnY = 50 * L.scale;
     var btnSize = 26 * L.scale;
     fillRoundRect(ctx, btnX, btnY, btnSize, btnSize, 5, COLORS.BLACK_40);
@@ -173,15 +177,15 @@ function renderBlueprintToggle(ctx, L) {
 function renderCardSlots(ctx, L) {
     // Center 6 cards at the bottom
     var totalW = 6 * L.cardW + 5 * L.cardGap;
-    var startX = (ctx.canvas.width - totalW) / 2;
+    var startX = (L.cssW - totalW) / 2;
 
     // --- Bottom UI backdrop (dark strip to separate from grid) ---
     var barTop = L.cardY - 8 * L.scale;
     var barH = (L.cardH + 12 * L.scale);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, barTop, ctx.canvas.width, barH);
+    ctx.fillRect(0, barTop, L.cssW, barH);
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.fillRect(0, barTop, ctx.canvas.width, 1);
+    ctx.fillRect(0, barTop, L.cssW, 1);
 
     // Label
     var labelX = startX - 6 * L.scale;
@@ -189,9 +193,9 @@ function renderCardSlots(ctx, L) {
 
     // --- Draw card button (centered above card row) ---
     var canDraw = G.gold >= CARD_DRAW_COST && stateFindEmptyCardSlot() >= 0;
-    var drawBtnW = Math.min(L.cardW * 3, ctx.canvas.width * 0.35);
+    var drawBtnW = Math.min(L.cardW * 3, L.cssW * 0.35);
     var drawBtnH = L.cardH * 0.7;
-    var drawBtnX = (ctx.canvas.width - drawBtnW) / 2;
+    var drawBtnX = (L.cssW - drawBtnW) / 2;
     var drawBtnY = L.cardY - drawBtnH - 4 * L.scale;
 
     fillRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, canDraw ? COLORS.GOLD_20 : 'rgba(255,255,255,0.04)');
@@ -268,13 +272,13 @@ function renderCardSlots(ctx, L) {
 
 function renderItemSlots(ctx, L) {
     var totalW = 5 * L.itemW + 4 * L.itemGap;
-    var startX = (ctx.canvas.width - totalW) / 2;
+    var startX = (L.cssW - totalW) / 2;
 
     // Item bar backdrop
     var barTop = L.itemY - 4 * L.scale;
     var barH = L.itemH + 8 * L.scale;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(0, barTop, ctx.canvas.width, barH);
+    ctx.fillRect(0, barTop, L.cssW, barH);
 
     // Label
     var labelX = startX - 6 * L.scale;
@@ -311,8 +315,8 @@ function renderBossItems(ctx) {
 
 function renderOverflowMode(ctx, L) {
     if (G.overflowReplacing < 0) return;
-    var cx = ctx.canvas.width / 2;
-    drawOutlineText(ctx, '🔄 点击卡槽替换 | 新卡: ' + (cardsDragCard ? cardsDragCard.name : ''), cx, ctx.canvas.height - 78 * L.scale, L.fsSmall, COLORS.ORANGE, COLORS.BG_DARK, 'center');
+    var cx = L.cssW / 2;
+    drawOutlineText(ctx, '🔄 点击卡槽替换 | 新卡: ' + (cardsDragCard ? cardsDragCard.name : ''), cx, L.cssH - 78 * L.scale, L.fsSmall, COLORS.ORANGE, COLORS.BG_DARK, 'center');
 }
 
 // ==================== 天赋面板 ====================
@@ -354,18 +358,18 @@ function renderCultivationUI(ctx) {
     var ui = hero.cultivationUI;
     if (!ui) return;
 
-    var cx = ctx.canvas.width / 2;
-    var L = uiLayout(ctx.canvas.width, ctx.canvas.height);
+    var L2 = uiLayout(ctx.canvas.width, ctx.canvas.height);
+    var cx = L2.cssW / 2;
     var s = L.scale;
 
     // Compact floating panel — centered, constrained to canvas
-    var uw = Math.min(280 * s, ctx.canvas.width * 0.7);
+    var uw = Math.min(280 * s, L2.cssW * 0.7);
     var ux = cx - uw / 2;
     var uy = 55 * s;
 
     // Ensure panel doesn't overflow right edge
-    if (ux + uw > ctx.canvas.width - 4 * s) {
-        ux = ctx.canvas.width - uw - 4 * s;
+    if (ux + uw > L2.cssW - 4 * s) {
+        ux = L2.cssW - uw - 4 * s;
     }
     if (ux < 4 * s) {
         ux = 4 * s;
@@ -516,15 +520,15 @@ function formatTime(seconds) {
 // ==================== 小地图信息 ====================
 
 function renderMiniInfo(ctx, L) {
-    var cx = ctx.canvas.width / 2;
+    var cx = L.cssW / 2;
     if (G.monsters.length > 0) {
-        drawOutlineText(ctx, '👾×' + G.monsters.length, cx, ctx.canvas.height - 120 * L.scale, 9 * L.scale, COLORS.WHITE_20, COLORS.BG_DARK, 'center');
+        drawOutlineText(ctx, '👾×' + G.monsters.length, cx, L.cssH - 120 * L.scale, 9 * L.scale, COLORS.WHITE_20, COLORS.BG_DARK, 'center');
     }
     // Wave time remaining
     if (G.waveEndTime > 0) {
         var remain = Math.max(0, Math.ceil((G.waveEndTime - G.time)));
         if (remain > 0) {
-            drawOutlineText(ctx, '⏱' + remain + 's', cx, ctx.canvas.height - 133 * L.scale, 10 * L.scale, COLORS.WHITE_30, COLORS.BG_DARK, 'center');
+            drawOutlineText(ctx, '⏱' + remain + 's', cx, L.cssH - 133 * L.scale, 10 * L.scale, COLORS.WHITE_30, COLORS.BG_DARK, 'center');
         }
     }
 }
