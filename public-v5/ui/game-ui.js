@@ -23,68 +23,69 @@
 function uiLayout(canvasW, canvasH) {
     var baseScale = Math.min(canvasW / 360, canvasH / 640);
 
-    // Dynamic safe area detection
-    var safeBottomPx = 0;
+    // --- Top safe area (iPhone notch / status bar) ---
+    var safeTopPx = 0;
+    try {
+        safeTopPx = parseInt(getComputedStyle(document.body).paddingTop) || 0;
+    } catch(e) {}
+    if (safeTopPx < 10) {
+        // Estimate: 5% of CSS height, min 20px for status bar
+        var dpr = window.devicePixelRatio || 1;
+        safeTopPx = Math.max((canvasH / dpr) * 0.05, 20);
+    }
 
-    // 1. Try CSS env variable (iOS Safari notch/home indicator)
+    // --- Bottom safe area ---
+    var safeBottomPx = 0;
     try {
         var cssSafe = getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom');
         if (cssSafe) safeBottomPx = parseInt(cssSafe) || 0;
     } catch(e) {}
 
-    // 2. Try body padding (set by env(safe-area-inset-bottom))
     if (safeBottomPx < 10) {
         try {
             safeBottomPx = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
         } catch(e) {}
     }
 
-    // 3. Detect in-app browser (Feishu/WeChat/Lark have bottom toolbars ~50-60px)
     var ua = navigator.userAgent || '';
     var isInApp = /Lark|Feishu|MicroMessenger|WeChat|DingTalk/i.test(ua);
 
-    // 4. Fallback calculation (use CSS pixels, not physical)
     if (safeBottomPx < 10) {
-        // Convert to CSS px — uiLayout receives ctx.canvas dimensions (physical)
-        var dpr = window.devicePixelRatio || 1;
-        var cssH = canvasH / dpr;
-        // Reserve: 12% for in-app browsers (Feishu toolbar ~55px), 7% for regular
+        var dpr2 = window.devicePixelRatio || 1;
+        var cssH2 = canvasH / dpr2;
         var pct = isInApp ? 0.12 : 0.07;
-        safeBottomPx = Math.max(cssH * pct, isInApp ? 55 : 30);
+        safeBottomPx = Math.max(cssH2 * pct, isInApp ? 55 : 30);
     }
-
-    // 5. Extra boost for in-app browsers
-    if (isInApp && safeBottomPx < 55) {
-        safeBottomPx = 55;
-    }
+    if (isInApp && safeBottomPx < 55) safeBottomPx = 55;
 
     var usableH = canvasH - safeBottomPx;
 
     return {
         scale: baseScale,
+        safeTop: safeTopPx,
         safeBottom: safeBottomPx,
-        // Card slots (bottom row, centered) — raised into safe zone
-        cardW: 48 * baseScale,
+        // Card slots (bottom row, centered) — raised for Home Indicator
+        cardW: Math.max(44, 48 * baseScale),
         cardH: 60 * baseScale,
         cardGap: 5 * baseScale,
-        cardY: usableH - 60 * baseScale,
-        // Item slots (above cards)
-        itemW: 40 * baseScale,
-        itemH: 40 * baseScale,
+        cardY: usableH - 72 * baseScale,
+        // Item slots (above cards) — min 44px tap target
+        itemW: Math.max(44, 40 * baseScale),
+        itemH: Math.max(44, 40 * baseScale),
         itemGap: 4 * baseScale,
-        itemY: usableH - 106 * baseScale,
-        // HP/MP bars (top-left) — start below status bar
-        hpY: 8 * baseScale,
+        itemY: usableH - 122 * baseScale,
+        // HP/MP bars (below status bar, inside safe area)
+        hpY: safeTopPx + 4 * baseScale,
         barW: 130 * baseScale,
         barH: 12 * baseScale,
         barX: 6 * baseScale,
         // Top-right info
         infoX: canvasW - 6 * baseScale,
         // Font sizes
-        fsTitle: 13 * baseScale,
-        fsBody: 11 * baseScale,
-        fsSmall: 9 * baseScale,
-        fsMini: 7 * baseScale
+        fsTitle: Math.max(10, 13 * baseScale),
+        fsBody: Math.max(9, 11 * baseScale),
+        fsSmall: Math.max(8, 9 * baseScale),
+        fsMini: Math.max(6, 7 * baseScale)
     };
 }
 
@@ -111,10 +112,10 @@ function renderHUD(ctx, L) {
     if (!G.player) return;
     var p = G.player;
 
-    // --- Top backdrop strip (compact) ---
+    // --- Top backdrop strip (below status bar) ---
+    var topH = L.safeTop + 30 * L.scale;
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    var topH = 40 * L.scale;
-    ctx.fillRect(0, 0, ctx.canvas.width, topH);
+    ctx.fillRect(0, L.safeTop, ctx.canvas.width, topH - L.safeTop);
 
     // --- HP bar ---
     var hpPct = p.hp / p.maxHp;
@@ -138,6 +139,15 @@ function renderHUD(ctx, L) {
 
     // Kills row
     drawOutlineText(ctx, '💀' + G.kills + ' (' + G.killsTowardTalent + '/' + diff.killsPerTalent + '天赋)', L.infoX, mpY + 16 * L.scale, L.fsMini, COLORS.WHITE_30, COLORS.BG_DARK, 'right');
+
+    // Pause button (top-left corner of game area)
+    var pauseBtnX = L.barX;
+    var pauseBtnY = L.safeTop + 36 * L.scale;
+    var pauseBtnSize = 22 * L.scale;
+    fillRoundRect(ctx, pauseBtnX, pauseBtnY, pauseBtnSize, pauseBtnSize, 4, 'rgba(0,0,0,0.3)');
+    strokeRoundRect(ctx, pauseBtnX, pauseBtnY, pauseBtnSize, pauseBtnSize, 4, 'rgba(255,255,255,0.15)', 1);
+    drawOutlineText(ctx, G.paused ? '▶' : '⏸', pauseBtnX + pauseBtnSize/2, pauseBtnY + pauseBtnSize * 0.65, 12 * L.scale, COLORS.WHITE_50, COLORS.BG_DARK, 'center');
+    window._pauseBtnRect = {x: pauseBtnX, y: pauseBtnY, w: pauseBtnSize, h: pauseBtnSize};
 }
 
 // ==================== 蓝图开关按钮 ====================
@@ -177,18 +187,17 @@ function renderCardSlots(ctx, L) {
     var labelX = startX - 6 * L.scale;
     drawOutlineText(ctx, '组件', labelX, L.cardY + L.cardH/2, 8 * L.scale, 'rgba(255,255,255,0.15)', COLORS.BG_DARK, 'right');
 
-    // --- Draw card button (always visible) ---
+    // --- Draw card button (centered above card row) ---
     var canDraw = G.gold >= CARD_DRAW_COST && stateFindEmptyCardSlot() >= 0;
-    var drawBtnW = L.cardW * 1.2, drawBtnH = L.cardH;
-    var drawBtnX = startX + totalW + 8 * L.scale;
-    var drawBtnY = L.cardY;
+    var drawBtnW = Math.min(L.cardW * 3, ctx.canvas.width * 0.35);
+    var drawBtnH = L.cardH * 0.7;
+    var drawBtnX = (ctx.canvas.width - drawBtnW) / 2;
+    var drawBtnY = L.cardY - drawBtnH - 4 * L.scale;
 
     fillRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, canDraw ? COLORS.GOLD_20 : 'rgba(255,255,255,0.04)');
     if (canDraw && G.overflowReplacing < 0) {
         strokeRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, COLORS.GOLD, 2.5);
-        drawOutlineText(ctx, '抽\n卡', drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2 - 6, L.fsSmall, COLORS.GOLD, COLORS.BG_DARK, 'center');
-        drawOutlineText(ctx, '💰' + CARD_DRAW_COST, drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2 + 12, L.fsMini, COLORS.GOLD, COLORS.BG_DARK, 'center');
-        // Pulsing animation frame
+        drawOutlineText(ctx, '🃏 抽卡 💰' + CARD_DRAW_COST, drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2 + 4, L.fsSmall, COLORS.GOLD, COLORS.BG_DARK, 'center');
         if (!window._drawBtnPhase) window._drawBtnPhase = 0;
         window._drawBtnPhase += 0.05;
         var pulse = Math.sin(window._drawBtnPhase) * 0.3 + 0.7;
@@ -196,7 +205,7 @@ function renderCardSlots(ctx, L) {
         window._drawCardRect = {x:drawBtnX, y:drawBtnY, w:drawBtnW, h:drawBtnH};
     } else {
         strokeRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, 'rgba(255,255,255,0.1)', 1);
-        drawOutlineText(ctx, '💰' + CARD_DRAW_COST, drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2, L.fsMini, 'rgba(255,255,255,0.2)', COLORS.BG_DARK, 'center');
+        drawOutlineText(ctx, '💰' + CARD_DRAW_COST + ' 抽卡', drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2 + 4, L.fsMini, 'rgba(255,255,255,0.2)', COLORS.BG_DARK, 'center');
         window._drawCardRect = {x:drawBtnX, y:drawBtnY, w:drawBtnW, h:drawBtnH};
     }
 

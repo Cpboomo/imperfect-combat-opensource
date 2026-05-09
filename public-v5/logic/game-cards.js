@@ -100,22 +100,25 @@ function cardsSell(slotIndex) {
  */
 function cardsUpdate(dt) {
     if (G.overflowReplacing >= 0) {
-        // In overflow mode — don't process normal hover
         cardsHoveredSlot = -1;
         return;
     }
 
-    // Check which slot is being hovered
     cardsHoveredSlot = -1;
     if (!inputState.isPointerDown) {
         var px = inputState.pointerScreenX;
         var py = inputState.pointerScreenY;
-        var cardW = 50, cardH = 60, gap = 6, startX, startY = 540;
 
-        // Slot positions
+        // Use responsive layout (not hardcoded coords)
+        var cw = engineCanvas ? engineCanvas.width : 360;
+        var ch = engineCanvas ? engineCanvas.height : 640;
+        var L = uiLayout(cw, ch);
+        var totalW = 6 * L.cardW + 5 * L.cardGap;
+        var startX = (cw - totalW) / 2;
+
         for (var i = 0; i < 6; i++) {
-            startX = 30 + i * (cardW + gap);
-            if (px >= startX && px <= startX + cardW && py >= startY && py <= startY + cardH) {
+            var sx = startX + i * (L.cardW + L.cardGap);
+            if (px >= sx && px <= sx + L.cardW && py >= L.cardY && py <= L.cardY + L.cardH) {
                 cardsHoveredSlot = i;
                 break;
             }

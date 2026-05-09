@@ -50,6 +50,15 @@ function gameRouteClick(wx, wy) {
     var cw = engineCanvas.width, ch = engineCanvas.height;
     var L = uiLayout(cw, ch);
 
+    // Check pause button
+    if (window._pauseBtnRect) {
+        var pr = window._pauseBtnRect;
+        if (sx >= pr.x && sx <= pr.x + pr.w && sy >= pr.y && sy <= pr.y + pr.h) {
+            loopTogglePause();
+            return;
+        }
+    }
+
     // Check card draw button
     if (window._drawCardRect) {
         var dr = window._drawCardRect;
@@ -131,19 +140,19 @@ function gameRouteClick(wx, wy) {
         }
     }
 
-    // Check boss following items click
+    // Check boss following items click (40px radius for fingers)
     for (i = 0; i < G.bossFollowingItems.length; i++) {
         var bi = G.bossFollowingItems[i];
-        if (distSq(sx, sy, bi.x - cam.x, bi.y - cam.y) < 400) {
+        if (distSq(sx, sy, bi.x - cam.x, bi.y - cam.y) < 1600) {
             itemsUsePortal(bi);
             return;
         }
     }
 
-    // Check ground items click
+    // Check ground items click (40px radius)
     for (i = 0; i < G.groundItems.length; i++) {
         var gi = G.groundItems[i];
-        if (distSq(sx, sy, gi.worldX - cam.x, gi.worldY - cam.y) < 400) {
+        if (distSq(sx, sy, gi.worldX - cam.x, gi.worldY - cam.y) < 1600) {
             if (itemsPickup(gi)) {
                 G.groundItems.splice(i, 1);
             }
