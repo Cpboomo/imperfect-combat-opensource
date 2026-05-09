@@ -10,13 +10,14 @@
 
 /**
  * Mobile layout zones (relative to canvas):
- *   TOP ZONE   (0-15%):   HP/MP bars + wave/gold/kills
- *   GAME ZONE  (15-70%):  The game world
- *   ITEM ZONE  (70-78%):  5-slot item bar
- *   CARD ZONE  (78-93%):  6-slot card bar + draw button
- *   SAFE GAP   (93-100%): Reserved for browser toolbar / home indicator
+ *   TOP ZONE   (0-12%):   HP/MP bars + wave/gold/kills
+ *   GAME ZONE  (12-62%):  The game world
+ *   ITEM ZONE  (62-71%):  5-slot item bar
+ *   CARD ZONE  (71-87%):  6-slot card bar + draw button
+ *   SAFE GAP   (87-100%): Reserved for browser toolbar / home indicator
  *
  * Reads CSS env(safe-area-inset-bottom) if available (iOS Safari),
+ * detects Feishu/WeChat in-app browser for extra bottom padding,
  * otherwise falls back to a percentage-based estimate.
  */
 function uiLayout(canvasW, canvasH) {
@@ -24,21 +25,37 @@ function uiLayout(canvasW, canvasH) {
 
     // Dynamic safe area detection
     var safeBottomPx = 0;
+
+    // 1. Try CSS env variable (iOS Safari notch/home indicator)
     try {
-        // Read CSS env variable if supported (iOS 11+, Safari)
         var cssSafe = getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom');
-        if (!cssSafe) {
-            // Try reading from body padding
-            var bodyPad = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
-            safeBottomPx = bodyPad;
-        } else {
-            safeBottomPx = parseInt(cssSafe) || 0;
-        }
+        if (cssSafe) safeBottomPx = parseInt(cssSafe) || 0;
     } catch(e) {}
 
-    // Fallback: reserve 5% of canvas height, min 24px, max 60px
+    // 2. Try body padding (set by env(safe-area-inset-bottom))
     if (safeBottomPx < 10) {
-        safeBottomPx = Math.min(Math.max(canvasH * 0.05, 24), 60);
+        try {
+            safeBottomPx = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
+        } catch(e) {}
+    }
+
+    // 3. Detect in-app browser (Feishu/WeChat/Lark have bottom toolbars ~50-60px)
+    var ua = navigator.userAgent || '';
+    var isInApp = /Lark|Feishu|MicroMessenger|WeChat|DingTalk/i.test(ua);
+
+    // 4. Fallback calculation (use CSS pixels, not physical)
+    if (safeBottomPx < 10) {
+        // Convert to CSS px — uiLayout receives ctx.canvas dimensions (physical)
+        var dpr = window.devicePixelRatio || 1;
+        var cssH = canvasH / dpr;
+        // Reserve: 12% for in-app browsers (Feishu toolbar ~55px), 7% for regular
+        var pct = isInApp ? 0.12 : 0.07;
+        safeBottomPx = Math.max(cssH * pct, isInApp ? 55 : 30);
+    }
+
+    // 5. Extra boost for in-app browsers
+    if (isInApp && safeBottomPx < 55) {
+        safeBottomPx = 55;
     }
 
     var usableH = canvasH - safeBottomPx;
@@ -328,15 +345,22 @@ function renderCultivationUI(ctx) {
     var ui = hero.cultivationUI;
     if (!ui) return;
 
-    var cam = cameraGetPos();
     var cx = ctx.canvas.width / 2;
     var L = uiLayout(ctx.canvas.width, ctx.canvas.height);
     var s = L.scale;
 
-    // Floating cultivation panel — centered top, above game zone
-    var ux = cx - 140 * s;
+    // Compact floating panel — centered, constrained to canvas
+    var uw = Math.min(280 * s, ctx.canvas.width * 0.7);
+    var ux = cx - uw / 2;
     var uy = 55 * s;
-    var uw = 280 * s;
+
+    // Ensure panel doesn't overflow right edge
+    if (ux + uw > ctx.canvas.width - 4 * s) {
+        ux = ctx.canvas.width - uw - 4 * s;
+    }
+    if (ux < 4 * s) {
+        ux = 4 * s;
+    }
 
     fillRoundRect(ctx, ux, uy, uw, 40 * s, 8, COLORS.BLACK_70);
     strokeRoundRect(ctx, ux, uy, uw, 40 * s, 8, COLORS.PURPLE, 1);
