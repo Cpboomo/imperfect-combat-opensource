@@ -111,7 +111,7 @@ function renderHUD(ctx, L) {
 
     // Background strip
     var hudBot = L.safeTop + 40;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, L.safeTop, L.cssW, 40);
     // Subtle gradient bottom edge
     var grad = ctx.createLinearGradient(0, hudBot - 4, 0, hudBot);
@@ -179,16 +179,17 @@ function renderBottomPanel(ctx, L) {
     var py = L.panelY;
     var ph = L.panelH;
 
-    // Main panel background
-    ctx.fillStyle = 'rgba(6,6,20,0.85)';
+    // Main panel background (more opaque for visibility)
+    ctx.fillStyle = 'rgba(4,4,16,0.93)';
     ctx.fillRect(0, py, L.cssW, ph);
 
     // Top border glow
-    var grad = ctx.createLinearGradient(0, py, 0, py + 3);
+    strokeRoundRect(ctx, 0, py, L.cssW, 1, 0, 'rgba(139,92,246,0.5)', 1.5);
+    var grad = ctx.createLinearGradient(0, py + 1, 0, py + 5);
     grad.addColorStop(0, 'rgba(139,92,246,0.3)');
     grad.addColorStop(1, 'rgba(139,92,246,0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, py, L.cssW, 3);
+    ctx.fillRect(0, py + 1, L.cssW, 4);
 
     // === Item slots (top section of panel) ===
     var itemTotalW = 5 * L.itemW + 4 * L.itemGap;
@@ -211,10 +212,11 @@ function renderBottomPanel(ctx, L) {
             drawOutlineText(ctx, (item.name || '').slice(0, 3), ix + L.itemW / 2, iy + L.itemH - 7,
                 7, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
         } else {
-            fillRoundRect(ctx, ix, iy, L.itemW, L.itemH, 5, 'rgba(255,255,255,0.02)');
-            strokeRoundRect(ctx, ix, iy, L.itemW, L.itemH, 5, 'rgba(255,255,255,0.06)', 1);
-            drawOutlineText(ctx, ' ' + (i + 1), ix + L.itemW / 2, iy + L.itemH / 2 + 2,
-                9, 'rgba(255,255,255,0.06)', COLORS.BG_DARK, 'center');
+            // Empty slot — more visible placeholder
+            fillRoundRect(ctx, ix, iy, L.itemW, L.itemH, 5, 'rgba(255,255,255,0.04)');
+            strokeRoundRect(ctx, ix, iy, L.itemW, L.itemH, 5, 'rgba(255,255,255,0.15)', 1.5);
+            drawOutlineText(ctx, '' + (i + 1), ix + L.itemW / 2, iy + L.itemH / 2 + 2,
+                10, 'rgba(255,255,255,0.12)', COLORS.BG_DARK, 'center');
         }
     }
 
@@ -275,11 +277,11 @@ function renderBottomPanel(ctx, L) {
                     dy - th / 2 + 17, 8, COLORS.GOLD, COLORS.BG_DARK, 'center');
             }
         } else {
-            // Empty slot
-            fillRoundRect(ctx, dx, dy, cw, ch, 5, 'rgba(255,255,255,0.03)');
-            strokeRoundRect(ctx, dx, dy, cw, ch, 5, 'rgba(255,255,255,0.1)', 1);
+            // Empty card slot — more visible
+            fillRoundRect(ctx, dx, dy, cw, ch, 6, 'rgba(255,255,255,0.05)');
+            strokeRoundRect(ctx, dx, dy, cw, ch, 6, 'rgba(255,255,255,0.18)', 1.5);
             drawOutlineText(ctx, '' + (j + 1), dx + cw / 2, dy + ch / 2 + 2,
-                11, 'rgba(255,255,255,0.08)', COLORS.BG_DARK, 'center');
+                13, 'rgba(255,255,255,0.15)', COLORS.BG_DARK, 'center');
         }
 
         // Overflow highlight
@@ -315,12 +317,12 @@ function renderBottomPanel(ctx, L) {
             10, COLORS.GOLD, COLORS.PURPLE, 'center');
         window._drawCardRect = { x: dxb, y: dyb, w: L.drawW, h: L.drawH };
     } else {
-        // Inactive draw button
-        fillRoundRect(ctx, dxb, dyb, L.drawW, L.drawH, 10, 'rgba(255,255,255,0.04)');
+        // Inactive draw button — still visible
+        fillRoundRect(ctx, dxb, dyb, L.drawW, L.drawH, 10, 'rgba(139,92,246,0.2)');
         strokeRoundRect(ctx, dxb, dyb, L.drawW, L.drawH, 10,
-            'rgba(255,255,255,0.1)', 1);
+            'rgba(139,92,246,0.3)', 2);
         drawOutlineText(ctx, '💰' + CARD_DRAW_COST + ' 抽卡', dxb + L.drawW / 2,
-            dyb + L.drawH / 2 + 4, 13, 'rgba(255,255,255,0.2)', COLORS.BG_DARK, 'center');
+            dyb + L.drawH / 2 + 4, 14, 'rgba(255,255,255,0.35)', COLORS.BG_DARK, 'center');
         window._drawCardRect = { x: dxb, y: dyb, w: L.drawW, h: L.drawH };
     }
 
