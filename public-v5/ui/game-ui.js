@@ -131,9 +131,8 @@ function renderBlueprintToggle(ctx, L) {
         window._blueprintToggleRect = null;
         return;
     }
-    // Place near top-right, under the info area
-    var bw = Math.min(260 * L.scale, ctx.canvas.width * 0.38);
-    var btnX = ctx.canvas.width - bw - 10 * L.scale;
+    // Fixed position near right edge, below wave info area
+    var btnX = ctx.canvas.width - 34 * L.scale;
     var btnY = 50 * L.scale;
     var btnSize = 26 * L.scale;
     fillRoundRect(ctx, btnX, btnY, btnSize, btnSize, 5, COLORS.BLACK_40);
@@ -156,6 +155,10 @@ function renderCardSlots(ctx, L) {
     ctx.fillRect(0, barTop, ctx.canvas.width, barH);
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
     ctx.fillRect(0, barTop, ctx.canvas.width, 1);
+
+    // Label
+    var labelX = startX - 6 * L.scale;
+    drawOutlineText(ctx, '组件', labelX, L.cardY + L.cardH/2, 8 * L.scale, 'rgba(255,255,255,0.15)', COLORS.BG_DARK, 'right');
 
     // --- Draw card button (always visible) ---
     var canDraw = G.gold >= CARD_DRAW_COST && stateFindEmptyCardSlot() >= 0;
@@ -246,6 +249,10 @@ function renderItemSlots(ctx, L) {
     var barH = L.itemH + 8 * L.scale;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(0, barTop, ctx.canvas.width, barH);
+
+    // Label
+    var labelX = startX - 6 * L.scale;
+    drawOutlineText(ctx, '道具', labelX, L.itemY + L.itemH/2, 8 * L.scale, 'rgba(255,255,255,0.15)', COLORS.BG_DARK, 'right');
 
     for (var i = 0; i < 5; i++) {
         var sx = startX + i * (L.itemW + L.itemGap);
