@@ -10,27 +10,38 @@
 
 /**
  * Mobile layout zones (relative to canvas):
- *   TOP ZONE   (0-18%):  HP/MP bars + wave/gold/kills
- *   GAME ZONE  (18-78%): The game world
- *   ITEM ZONE  (78-86%): 5-slot item bar
- *   CARD ZONE  (86-99%): 6-slot card bar + draw button
+ *   TOP ZONE   (0-15%):   HP/MP bars + wave/gold/kills
+ *   GAME ZONE  (15-70%):  The game world
+ *   ITEM ZONE  (70-78%):  5-slot item bar
+ *   CARD ZONE  (78-93%):  6-slot card bar + draw button
+ *   SAFE GAP   (93-100%): Reserved for browser toolbar
+ *
+ * On mobile in-app browsers (Feishu/WeChat), the bottom ~7% is
+ * often covered by browser chrome. We shift UI up accordingly.
  */
 function uiLayout(canvasW, canvasH) {
     var baseScale = Math.min(canvasW / 360, canvasH / 640);
+
+    // Reserve bottom safe area (7% of canvas height, min 30px physical)
+    // This accounts for browser toolbars in Feishu/WeChat embedded browsers
+    var safeBottom = Math.max(canvasH * 0.07, 30);
+    var usableH = canvasH - safeBottom;
+
     return {
         scale: baseScale,
-        // Card slots (bottom row, centered)
+        safeBottom: safeBottom,
+        // Card slots (bottom row, centered) — raised into safe zone
         cardW: 48 * baseScale,
         cardH: 60 * baseScale,
         cardGap: 5 * baseScale,
-        cardY: canvasH - 66 * baseScale,
+        cardY: usableH - 60 * baseScale,
         // Item slots (above cards)
         itemW: 40 * baseScale,
         itemH: 40 * baseScale,
         itemGap: 4 * baseScale,
-        itemY: canvasH - 112 * baseScale,
-        // HP/MP bars (top-left)
-        hpY: 6 * baseScale,
+        itemY: usableH - 106 * baseScale,
+        // HP/MP bars (top-left) — start below status bar
+        hpY: 8 * baseScale,
         barW: 130 * baseScale,
         barH: 12 * baseScale,
         barX: 6 * baseScale,
@@ -49,6 +60,7 @@ function uiLayout(canvasW, canvasH) {
 function renderUI(ctx, size) {
     var L = uiLayout(size.w, size.h);
     renderHUD(ctx, L);
+    renderBlueprintToggle(ctx, L);
     renderCardSlots(ctx, L);
     renderItemSlots(ctx, L);
     renderBossItems(ctx);
@@ -66,9 +78,9 @@ function renderHUD(ctx, L) {
     if (!G.player) return;
     var p = G.player;
 
-    // --- Top backdrop strip ---
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    var topH = 52 * L.scale;
+    // --- Top backdrop strip (compact) ---
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    var topH = 40 * L.scale;
     ctx.fillRect(0, 0, ctx.canvas.width, topH);
 
     // --- HP bar ---
@@ -93,6 +105,25 @@ function renderHUD(ctx, L) {
 
     // Kills row
     drawOutlineText(ctx, '💀' + G.kills + ' (' + G.killsTowardTalent + '/' + diff.killsPerTalent + '天赋)', L.infoX, mpY + 16 * L.scale, L.fsMini, COLORS.WHITE_30, COLORS.BG_DARK, 'right');
+}
+
+// ==================== 蓝图开关按钮 ====================
+
+/** Small 📋 button in top-right — only visible when blueprint is closed */
+function renderBlueprintToggle(ctx, L) {
+    if (G.blueprintOpen) {
+        window._blueprintToggleRect = null;
+        return;
+    }
+    // Place near top-right, under the info area
+    var bw = Math.min(260 * L.scale, ctx.canvas.width * 0.38);
+    var btnX = ctx.canvas.width - bw - 10 * L.scale;
+    var btnY = 50 * L.scale;
+    var btnSize = 26 * L.scale;
+    fillRoundRect(ctx, btnX, btnY, btnSize, btnSize, 5, COLORS.BLACK_40);
+    strokeRoundRect(ctx, btnX, btnY, btnSize, btnSize, 5, COLORS.WHITE_12, 1);
+    drawOutlineText(ctx, '📋', btnX + btnSize/2, btnY + btnSize * 0.65, 14 * L.scale, COLORS.WHITE_50, COLORS.BG_DARK, 'center');
+    window._blueprintToggleRect = {x: btnX, y: btnY, w: btnSize, h: btnSize};
 }
 
 // ==================== 6格悬浮卡槽 (底部拇指区域) ====================
@@ -289,47 +320,75 @@ function renderBlueprint(ctx, size) {
     if (!G.blueprintOpen) return;
 
     var L = uiLayout(size.w, size.h);
-    var bw = 260 * L.scale;
+    var bw = Math.min(260 * L.scale, size.w * 0.38);
     var bx = size.w - bw;
 
-    fillRoundRect(ctx, bx, 0, bw, size.h, 0, 'rgba(10,10,30,0.95)');
+    // Dim background
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, 0, size.w, size.h);
+
+    fillRoundRect(ctx, bx, 0, bw, size.h, 0, 'rgba(10,10,30,0.97)');
     strokeRoundRect(ctx, bx, 0, bw, size.h, 0, COLORS.WHITE_08, 2);
 
     var hero = stateGetHero();
     var yo = 52 * L.scale;
 
-    drawOutlineText(ctx, hero.icon + ' ' + hero.name, bx + 16 * L.scale, yo, 16 * L.scale, hero.color, COLORS.BG_DARK);
-    yo += 24 * L.scale;
+    // Close X button
+    var closeX = bx + bw - 18 * L.scale;
+    var closeY = 10 * L.scale;
+    drawOutlineText(ctx, '✕', closeX, closeY + 12 * L.scale, 16 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
+    window._blueprintCloseRect = {x: closeX - 14 * L.scale, y: closeY, w: 30 * L.scale, h: 30 * L.scale};
 
-    drawOutlineText(ctx, '══ 核心组件 ══', bx + 12 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
+    drawOutlineText(ctx, hero.icon + ' ' + hero.name, bx + 16 * L.scale, yo, 14 * L.scale, hero.color, COLORS.BG_DARK);
+    yo += 22 * L.scale;
+
+    drawOutlineText(ctx, '══ 核心组件 ══', bx + 10 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
     yo += 16 * L.scale;
 
+    var hasCards = false;
     for (var i = 0; i < 6; i++) {
         var card = G.cardSlots[i];
         if (card) {
-            drawOutlineText(ctx, card.icon + ' ' + card.name, bx + 20 * L.scale, yo, 9 * L.scale, COLORS.WHITE_60, COLORS.BG_DARK);
-            yo += 16 * L.scale;
+            hasCards = true;
+            drawOutlineText(ctx, card.icon + ' ' + card.name, bx + 18 * L.scale, yo, 9 * L.scale, COLORS.WHITE_60, COLORS.BG_DARK);
+            yo += 15 * L.scale;
         }
+    }
+    if (!hasCards) {
+        drawOutlineText(ctx, '(空的 — 抽卡获取组件)', bx + 18 * L.scale, yo, 8 * L.scale, COLORS.WHITE_20, COLORS.BG_DARK);
+        yo += 12 * L.scale;
     }
 
     yo += 6 * L.scale;
-    drawOutlineText(ctx, '══ 外挂模块 ══', bx + 12 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
+    drawOutlineText(ctx, '══ 外挂模块 ══', bx + 10 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
     yo += 16 * L.scale;
 
-    for (i = 0; i < G.talents.length; i++) {
-        drawOutlineText(ctx, G.talents[i].icon + ' ' + G.talents[i].name, bx + 20 * L.scale, yo, 9 * L.scale, COLORS.WHITE_60, COLORS.BG_DARK);
-        yo += 14 * L.scale;
+    if (G.talents.length > 0) {
+        for (i = 0; i < G.talents.length; i++) {
+            drawOutlineText(ctx, G.talents[i].icon + ' ' + G.talents[i].name, bx + 18 * L.scale, yo, 9 * L.scale, COLORS.WHITE_60, COLORS.BG_DARK);
+            yo += 13 * L.scale;
+        }
+    } else {
+        drawOutlineText(ctx, '(无天赋)', bx + 18 * L.scale, yo, 8 * L.scale, COLORS.WHITE_20, COLORS.BG_DARK);
+        yo += 12 * L.scale;
     }
 
     if (stateIsCultivation() && G.cultivationL3.length > 0) {
         yo += 6 * L.scale;
-        drawOutlineText(ctx, '══ 羁绊回路 ══', bx + 12 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
+        drawOutlineText(ctx, '══ 羁绊回路 ══', bx + 10 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
         yo += 16 * L.scale;
         for (i = 0; i < G.cultivationL3.length; i++) {
-            drawOutlineText(ctx, G.cultivationL3[i].icon + ' ' + G.cultivationL3[i].name, bx + 20 * L.scale, yo, 8 * L.scale, COLORS.PURPLE, COLORS.BG_DARK);
-            yo += 14 * L.scale;
+            drawOutlineText(ctx, G.cultivationL3[i].icon + ' ' + G.cultivationL3[i].name, bx + 18 * L.scale, yo, 8 * L.scale, COLORS.PURPLE, COLORS.BG_DARK);
+            yo += 13 * L.scale;
         }
     }
+
+    // Blueprint toggle button (small, top-right of game area)
+    var toggleBtnX = size.w - bw - 22 * L.scale;
+    var toggleBtnY = 10 * L.scale;
+    fillRoundRect(ctx, toggleBtnX, toggleBtnY, 20 * L.scale, 20 * L.scale, 4, COLORS.WHITE_08);
+    drawOutlineText(ctx, '📋', toggleBtnX + 10 * L.scale, toggleBtnY + 14 * L.scale, 11 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
+    window._blueprintToggleRect = {x: toggleBtnX, y: toggleBtnY, w: 20 * L.scale, h: 20 * L.scale};
 }
 
 // ==================== 游戏结束面板 ====================

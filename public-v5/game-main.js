@@ -96,10 +96,27 @@ function gameRouteClick(wx, wy) {
         }
     }
 
-    // Check blueprint toggle (top-right area, responsive)
-    var blueprintToggleX = cw - 40 * L.scale;
-    if (sx > blueprintToggleX && sy < 50 * L.scale) {
-        G.blueprintOpen = !G.blueprintOpen;
+    // Check blueprint toggle button (small 📋 button top-right)
+    if (window._blueprintToggleRect) {
+        var br = window._blueprintToggleRect;
+        if (sx >= br.x && sx <= br.x + br.w && sy >= br.y && sy <= br.y + br.h) {
+            G.blueprintOpen = true;
+            return;
+        }
+    }
+
+    // Check blueprint close button
+    if (G.blueprintOpen && window._blueprintCloseRect) {
+        var bc = window._blueprintCloseRect;
+        if (sx >= bc.x && sx <= bc.x + bc.w && sy >= bc.y && sy <= bc.y + bc.h) {
+            G.blueprintOpen = false;
+            return;
+        }
+    }
+
+    // Check blueprint sidebar background tap → close
+    if (G.blueprintOpen) {
+        G.blueprintOpen = false;
         return;
     }
 
