@@ -1,104 +1,96 @@
 /**
- * game-ui.js — v5.0 UI渲染层 (手游优化版)
+ * game-ui.js — v5.1 手游UI重设计
  * @module game-ui
- * @description Mobile-first HUD: bottom thumb zone for cards/items, top info zone for stats.
- *   All positions relative to canvas dimensions — works on any screen.
+ * @description Mobile-first HUD: unified bottom panel for cards/items/draw,
+ *   compact top bar for stats. Fixed 390×844 phone portrait resolution.
  */
 'use strict';
 
-// ==================== Responsive Layout ====================
+// ==================== Layout ====================
 
 /**
- * Mobile layout zones (relative to canvas):
- *   TOP ZONE   (0-12%):   HP/MP bars + wave/gold/kills
- *   GAME ZONE  (12-62%):  The game world
- *   ITEM ZONE  (62-71%):  5-slot item bar
- *   CARD ZONE  (71-87%):  6-slot card bar + draw button
- *   SAFE GAP   (87-100%): Reserved for browser toolbar / home indicator
+ * Fixed phone portrait layout (390×844).
  *
- * Reads CSS env(safe-area-inset-bottom) if available (iOS Safari),
- * detects Feishu/WeChat in-app browser for extra bottom padding,
- * otherwise falls back to a percentage-based estimate.
+ * Zones:
+ *   Y=0-60    SAFE TOP (Feishu nav bar)
+ *   Y=60-100  HUD BAR (HP/MP + wave/gold/kills + pause)
+ *   Y=100-430 GAME WORLD
+ *   Y=430-660 BOTTOM PANEL (items + cards + draw button)
+ *   Y=660-744 BUFFER (Feishu bottom toolbar)
  */
 function uiLayout(canvasW, canvasH) {
-    // Canvas buffer is fixed at 390×844 phone portrait resolution
-    // All drawing is in CSS pixels (setTransform scales by DPR)
     var dpr = window.devicePixelRatio || 1;
     var cssW = canvasW / dpr;
     var cssH = canvasH / dpr;
-    var baseScale = Math.min(cssW / 360, cssH / 640);
 
-    // Detect Feishu / WeChat in-app browser
     var ua = navigator.userAgent || '';
     var isInApp = /Lark|Feishu|MicroMessenger|WeChat|DingTalk/i.test(ua);
 
-    // --- Top safe area ---
-    // System status bar (~44px) + possible browser nav bar (~44px in Feishu)
-    var safeTopPx = parseInt(getComputedStyle(document.body).paddingTop) || 0;
-    if (safeTopPx < 10) safeTopPx = 44; // iPhone notch default
-    if (isInApp && safeTopPx < 60) safeTopPx = Math.max(safeTopPx, 60); // Feishu top bar
+    // Safe areas
+    var safeTop = parseInt(getComputedStyle(document.body).paddingTop) || 44;
+    if (isInApp && safeTop < 60) safeTop = 60;
+    var safeBottom = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
+    if (isInApp) safeBottom = Math.max(safeBottom, 100);
+    else if (safeBottom < 10) safeBottom = 34;
 
-    // --- Bottom safe area ---
-    // Feishu bottom toolbar ~100px, WeChat ~50px, home indicator ~34px
-    var safeBottomPx = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
-    if (isInApp) {
-        safeBottomPx = Math.max(safeBottomPx, 100); // Feishu/WeChat bottom bar
-    } else if (safeBottomPx < 10) {
-        safeBottomPx = Math.max(cssH * 0.06, 30); // Home indicator / browser bar
-    }
-
-    var usableH = cssH - safeBottomPx;
+    var usableH = cssH - safeBottom;
 
     return {
-        // CSS pixel dimensions of the viewport
-        cssW: cssW,
-        cssH: cssH,
-        scale: baseScale,
-        safeTop: safeTopPx,
-        safeBottom: safeBottomPx,
-        // Card slots (bottom row, centered) — raised for Home Indicator
-        cardW: Math.max(44, 48 * baseScale),
-        cardH: 60 * baseScale,
-        cardGap: 5 * baseScale,
-        cardY: usableH - 72 * baseScale,
-        // Item slots (above cards) — min 44px tap target
-        itemW: Math.max(44, 40 * baseScale),
-        itemH: Math.max(44, 40 * baseScale),
-        itemGap: 4 * baseScale,
-        itemY: usableH - 122 * baseScale,
-        // HP/MP bars (below status bar, inside safe area)
-        hpY: safeTopPx + 4 * baseScale,
-        barW: 130 * baseScale,
-        barH: 12 * baseScale,
-        barX: 6 * baseScale,
-        // Top-right info
-        infoX: cssW - 6 * baseScale,
-        // Font sizes
-        fsTitle: Math.max(10, 13 * baseScale),
-        fsBody: Math.max(9, 11 * baseScale),
-        fsSmall: Math.max(8, 9 * baseScale),
-        fsMini: Math.max(6, 7 * baseScale)
+        cssW: cssW, cssH: cssH,
+        safeTop: safeTop, safeBottom: safeBottom,
+
+        // === HUD (top bar) ===
+        hudY: safeTop + 4,
+        hudH: 36,
+        barW: 150,
+        barH: 14,
+        barX: 8,
+        barGap: 3,
+        infoX: cssW - 10,
+
+        // === Bottom panel ===
+        panelY: usableH - 230,
+        panelH: 230,
+
+        // Item slots (top of panel)
+        itemW: 48, itemH: 48,
+        itemGap: 6,
+        itemY: usableH - 218,
+
+        // Card slots (middle of panel)
+        cardW: 56, cardH: 70,
+        cardGap: 6,
+        cardY: usableH - 158,
+
+        // Draw button (bottom of panel)
+        drawW: 240, drawH: 52,
+        drawY: usableH - 72,
+
+        // Overflow hint
+        overflowY: usableH - 246,
+
+        // === Font sizes ===
+        fsTitle: 14,
+        fsBody: 12,
+        fsSmall: 10,
+        fsMini: 8
     };
 }
 
-// ==================== Main UI Render ====================
+// ==================== Main Render ====================
 
 function renderUI(ctx, size) {
     var L = uiLayout(size.w, size.h);
     _safeCall(function(){ renderHUD(ctx, L); });
-    _safeCall(function(){ renderBlueprintToggle(ctx, L); });
-    _safeCall(function(){ renderCardSlots(ctx, L); });
-    _safeCall(function(){ renderItemSlots(ctx, L); });
+    _safeCall(function(){ renderBottomPanel(ctx, L); });
     _safeCall(function(){ renderBossItems(ctx); });
     _safeCall(function(){ renderOverflowMode(ctx, L); });
     _safeCall(function(){ renderTalentPanel(ctx, size); });
     _safeCall(function(){ renderCultivationUI(ctx); });
     _safeCall(function(){ renderBlueprint(ctx, size); });
     _safeCall(function(){ renderGameOver(ctx, size); });
-    _safeCall(function(){ renderMiniInfo(ctx, L); });
 }
 
-/** Safe call — logs errors without crashing the rest of renderUI */
 function _safeCall(fn) {
     try { fn(); } catch(e) {
         if (!window.__safeCallErrors) window.__safeCallErrors = {};
@@ -111,197 +103,240 @@ function _safeCall(fn) {
     }
 }
 
-// ==================== HUD ====================
+// ==================== HUD (Top Bar) ====================
 
 function renderHUD(ctx, L) {
     if (!G.player) return;
     var p = G.player;
 
-    // --- Top backdrop strip (below status bar) ---
-    var topH = L.safeTop + 30 * L.scale;
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(0, L.safeTop, L.cssW, topH - L.safeTop);
+    // Background strip
+    var hudBot = L.safeTop + 40;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, L.safeTop, L.cssW, 40);
+    // Subtle gradient bottom edge
+    var grad = ctx.createLinearGradient(0, hudBot - 4, 0, hudBot);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.15)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, hudBot - 4, L.cssW, 4);
 
-    // --- HP bar ---
+    var by = L.hudY;
+
+    // HP bar
     var hpPct = p.hp / p.maxHp;
     var hpColor = hpPct > 0.5 ? COLORS.GREEN : hpPct > 0.25 ? COLORS.ORANGE : COLORS.RED;
-    var hpY = L.hpY;
-    drawProgressBar(ctx, L.barX, hpY, L.barW, L.barH, hpPct, hpColor);
-    drawOutlineText(ctx, '❤️ ' + Math.round(p.hp) + '/' + p.maxHp, L.barX + L.barW/2, hpY + L.barH * 0.7, L.fsSmall, COLORS.WHITE, COLORS.BG_DARK, 'center');
+    drawProgressBar(ctx, L.barX, by, L.barW, L.barH, hpPct, hpColor);
+    drawOutlineText(ctx, '♥ ' + Math.round(p.hp) + '/' + p.maxHp,
+        L.barX + L.barW / 2, by + L.barH * 0.7, L.fsSmall, COLORS.WHITE, COLORS.BG_DARK, 'center');
 
-    // --- MP bar ---
-    var mpY = hpY + L.barH + 3 * L.scale;
+    // MP bar
+    var mpy = by + L.barH + L.barGap;
     var mpPct = p.mp / p.maxMp;
-    drawProgressBar(ctx, L.barX, mpY, L.barW * 0.75, L.barH * 0.7, mpPct, COLORS.CYAN);
-    drawOutlineText(ctx, '💧' + Math.round(p.mp), L.barX + L.barW * 0.75/2, mpY + L.barH * 0.5, L.fsMini, COLORS.CYAN, COLORS.BG_DARK, 'center');
+    drawProgressBar(ctx, L.barX, mpy, L.barW * 0.8, L.barH * 0.7, mpPct, COLORS.CYAN);
+    drawOutlineText(ctx, '♦ ' + Math.round(p.mp), L.barX + L.barW * 0.4,
+        mpy + L.barH * 0.5, L.fsMini, COLORS.CYAN, COLORS.BG_DARK, 'center');
 
-    // --- Wave + Gold (top-right) ---
-    drawOutlineText(ctx, '🌊 第' + G.chapter + '章' + G.wave + '波', L.infoX, hpY + L.barH * 0.5, L.fsTitle, COLORS.WHITE, COLORS.BG_DARK, 'right');
+    // Wave + chapter (top-right)
+    drawOutlineText(ctx, '⚔ 第' + G.chapter + '章' + G.wave + '波',
+        L.infoX, by + L.barH * 0.5, L.fsTitle, COLORS.WHITE, COLORS.BG_DARK, 'right');
 
     // Gold
+    drawOutlineText(ctx, '💰' + G.gold, L.infoX, mpy + L.barH * 0.5,
+        L.fsBody, COLORS.GOLD, COLORS.BG_DARK, 'right');
+
+    // Kills + talent progress
     var diff = stateGetDifficulty();
-    drawOutlineText(ctx, '💰' + G.gold, L.infoX, mpY + L.barH * 0.5, L.fsBody, COLORS.GOLD, COLORS.BG_DARK, 'right');
+    drawOutlineText(ctx, '💀' + G.kills + ' (' + G.killsTowardTalent + '/' + diff.killsPerTalent + ')',
+        L.infoX, mpy + 14, L.fsMini, COLORS.WHITE_20, COLORS.BG_DARK, 'right');
 
-    // Kills row
-    drawOutlineText(ctx, '💀' + G.kills + ' (' + G.killsTowardTalent + '/' + diff.killsPerTalent + '天赋)', L.infoX, mpY + 16 * L.scale, L.fsMini, COLORS.WHITE_30, COLORS.BG_DARK, 'right');
+    // Pause button (top-left, below HUD bar)
+    var psz = 26;
+    var pbx = L.barX;
+    var pby = L.safeTop + 44;
+    fillRoundRect(ctx, pbx, pby, psz, psz, 5, COLORS.BLACK_40);
+    strokeRoundRect(ctx, pbx, pby, psz, psz, 5, COLORS.WHITE_08, 1);
+    drawOutlineText(ctx, G.paused ? '▶' : '⏸', pbx + psz / 2, pby + psz * 0.62,
+        13, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
+    window._pauseBtnRect = { x: pbx, y: pby, w: psz, h: psz };
 
-    // Pause button (top-left corner of game area)
-    var pauseBtnX = L.barX;
-    var pauseBtnY = L.safeTop + 36 * L.scale;
-    var pauseBtnSize = 22 * L.scale;
-    fillRoundRect(ctx, pauseBtnX, pauseBtnY, pauseBtnSize, pauseBtnSize, 4, 'rgba(0,0,0,0.3)');
-    strokeRoundRect(ctx, pauseBtnX, pauseBtnY, pauseBtnSize, pauseBtnSize, 4, 'rgba(255,255,255,0.15)', 1);
-    drawOutlineText(ctx, G.paused ? '▶' : '⏸', pauseBtnX + pauseBtnSize/2, pauseBtnY + pauseBtnSize * 0.65, 12 * L.scale, COLORS.WHITE_50, COLORS.BG_DARK, 'center');
-    window._pauseBtnRect = {x: pauseBtnX, y: pauseBtnY, w: pauseBtnSize, h: pauseBtnSize};
-}
-
-// ==================== 蓝图开关按钮 ====================
-
-/** Small 📋 button in top-right — only visible when blueprint is closed */
-function renderBlueprintToggle(ctx, L) {
-    if (G.blueprintOpen) {
+    // 📋 Blueprint toggle (next to pause)
+    if (!G.blueprintOpen) {
+        var bbx = pbx + psz + 4;
+        fillRoundRect(ctx, bbx, pby, psz, psz, 5, COLORS.BLACK_40);
+        strokeRoundRect(ctx, bbx, pby, psz, psz, 5, COLORS.WHITE_08, 1);
+        drawOutlineText(ctx, '📋', bbx + psz / 2, pby + psz * 0.62,
+            14, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
+        window._blueprintToggleRect = { x: bbx, y: pby, w: psz, h: psz };
+    } else {
         window._blueprintToggleRect = null;
-        return;
     }
-    // Fixed position near right edge, below wave info area
-    var btnX = L.cssW - 34 * L.scale;
-    var btnY = 50 * L.scale;
-    var btnSize = 26 * L.scale;
-    fillRoundRect(ctx, btnX, btnY, btnSize, btnSize, 5, COLORS.BLACK_40);
-    strokeRoundRect(ctx, btnX, btnY, btnSize, btnSize, 5, COLORS.WHITE_12, 1);
-    drawOutlineText(ctx, '📋', btnX + btnSize/2, btnY + btnSize * 0.65, 14 * L.scale, COLORS.WHITE_50, COLORS.BG_DARK, 'center');
-    window._blueprintToggleRect = {x: btnX, y: btnY, w: btnSize, h: btnSize};
 }
 
-// ==================== 6格悬浮卡槽 (底部拇指区域) ====================
+// ==================== Bottom Panel (Unified) ====================
 
-function renderCardSlots(ctx, L) {
-    // Center 6 cards at the bottom
-    var totalW = 6 * L.cardW + 5 * L.cardGap;
-    var startX = (L.cssW - totalW) / 2;
+function renderBottomPanel(ctx, L) {
+    // === Unified backdrop ===
+    var py = L.panelY;
+    var ph = L.panelH;
 
-    // --- Bottom UI backdrop (dark strip to separate from grid) ---
-    var barTop = L.cardY - 8 * L.scale;
-    var barH = (L.cardH + 12 * L.scale);
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, barTop, L.cssW, barH);
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.fillRect(0, barTop, L.cssW, 1);
+    // Main panel background
+    ctx.fillStyle = 'rgba(6,6,20,0.85)';
+    ctx.fillRect(0, py, L.cssW, ph);
+
+    // Top border glow
+    var grad = ctx.createLinearGradient(0, py, 0, py + 3);
+    grad.addColorStop(0, 'rgba(139,92,246,0.3)');
+    grad.addColorStop(1, 'rgba(139,92,246,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, py, L.cssW, 3);
+
+    // === Item slots (top section of panel) ===
+    var itemTotalW = 5 * L.itemW + 4 * L.itemGap;
+    var itemStartX = (L.cssW - itemTotalW) / 2;
 
     // Label
-    var labelX = startX - 6 * L.scale;
-    drawOutlineText(ctx, '组件', labelX, L.cardY + L.cardH/2, 8 * L.scale, 'rgba(255,255,255,0.15)', COLORS.BG_DARK, 'right');
+    drawOutlineText(ctx, '道具', 10, L.itemY + L.itemH / 2,
+        9, 'rgba(255,255,255,0.25)', COLORS.BG_DARK, 'left');
 
-    // --- Draw card button (centered above card row) ---
-    var canDraw = G.gold >= CARD_DRAW_COST && stateFindEmptyCardSlot() >= 0;
-    var drawBtnW = Math.min(L.cardW * 3, L.cssW * 0.35);
-    var drawBtnH = L.cardH * 0.7;
-    var drawBtnX = (L.cssW - drawBtnW) / 2;
-    var drawBtnY = L.cardY - drawBtnH - 4 * L.scale;
+    for (var i = 0; i < 5; i++) {
+        var ix = itemStartX + i * (L.itemW + L.itemGap);
+        var iy = L.itemY;
 
-    fillRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, canDraw ? COLORS.GOLD_20 : 'rgba(255,255,255,0.04)');
-    if (canDraw && G.overflowReplacing < 0) {
-        strokeRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, COLORS.GOLD, 2.5);
-        drawOutlineText(ctx, '🃏 抽卡 💰' + CARD_DRAW_COST, drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2 + 4, L.fsSmall, COLORS.GOLD, COLORS.BG_DARK, 'center');
-        if (!window._drawBtnPhase) window._drawBtnPhase = 0;
-        window._drawBtnPhase += 0.05;
-        var pulse = Math.sin(window._drawBtnPhase) * 0.3 + 0.7;
-        strokeRoundRect(ctx, drawBtnX - 1, drawBtnY - 1, drawBtnW + 2, drawBtnH + 2, 7, COLORS.GOLD, 1.5 + pulse);
-        window._drawCardRect = {x:drawBtnX, y:drawBtnY, w:drawBtnW, h:drawBtnH};
-    } else {
-        strokeRoundRect(ctx, drawBtnX, drawBtnY, drawBtnW, drawBtnH, 6, 'rgba(255,255,255,0.1)', 1);
-        drawOutlineText(ctx, '💰' + CARD_DRAW_COST + ' 抽卡', drawBtnX + drawBtnW/2, drawBtnY + drawBtnH/2 + 4, L.fsMini, 'rgba(255,255,255,0.2)', COLORS.BG_DARK, 'center');
-        window._drawCardRect = {x:drawBtnX, y:drawBtnY, w:drawBtnW, h:drawBtnH};
+        var item = G.itemSlots[i];
+        if (item) {
+            fillRoundRect(ctx, ix, iy, L.itemW, L.itemH, 6, 'rgba(255,255,255,0.08)');
+            strokeRoundRect(ctx, ix, iy, L.itemW, L.itemH, 6, COLORS.WHITE_12, 1.5);
+            drawOutlineText(ctx, item.icon || '📦', ix + L.itemW / 2, iy + L.itemH / 2 - 4,
+                16, COLORS.WHITE, COLORS.BG_DARK, 'center');
+            drawOutlineText(ctx, (item.name || '').slice(0, 3), ix + L.itemW / 2, iy + L.itemH - 7,
+                7, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
+        } else {
+            fillRoundRect(ctx, ix, iy, L.itemW, L.itemH, 5, 'rgba(255,255,255,0.02)');
+            strokeRoundRect(ctx, ix, iy, L.itemW, L.itemH, 5, 'rgba(255,255,255,0.06)', 1);
+            drawOutlineText(ctx, ' ' + (i + 1), ix + L.itemW / 2, iy + L.itemH / 2 + 2,
+                9, 'rgba(255,255,255,0.06)', COLORS.BG_DARK, 'center');
+        }
     }
 
-    for (var i = 0; i < 6; i++) {
-        var sx = startX + i * (L.cardW + L.cardGap);
-        var sy = L.cardY;
+    // === Card slots (middle section of panel) ===
+    var cardTotalW = 6 * L.cardW + 5 * L.cardGap;
+    var cardStartX = (L.cssW - cardTotalW) / 2;
 
-        var card = G.cardSlots[i];
-        var isHovered = cardsHoveredSlot === i;
-        var scale = isHovered ? 1.25 : 1;
-        var w = L.cardW * scale, h = L.cardH * scale;
-        var dx = sx - (w - L.cardW) / 2;
-        var dy = sy - (h - L.cardH);
+    // Label
+    drawOutlineText(ctx, '组件', 10, L.cardY + L.cardH / 2,
+        9, 'rgba(255,255,255,0.25)', COLORS.BG_DARK, 'left');
+
+    for (var j = 0; j < 6; j++) {
+        var cx = cardStartX + j * (L.cardW + L.cardGap);
+        var cy = L.cardY;
+
+        var card = G.cardSlots[j];
+        var isHovered = cardsHoveredSlot === j;
+        var sc = isHovered ? 1.18 : 1;
+        var cw = L.cardW * sc, ch = L.cardH * sc;
+        var dx = cx - (cw - L.cardW) / 2;
+        var dy = cy - (ch - L.cardH);
 
         if (card) {
             var cardColor;
-            switch(card.rarity) {
-                case 1: cardColor = '#666'; break;
+            switch (card.rarity) {
+                case 1: cardColor = '#555'; break;
                 case 2: cardColor = '#22c55e'; break;
                 case 3: cardColor = '#3b82f6'; break;
                 case 4: cardColor = '#8b5cf6'; break;
                 case 5: cardColor = '#ffd700'; break;
-                default: cardColor = '#666';
+                default: cardColor = '#555';
             }
-            drawMatteCard(ctx, dx, dy, w, h, cardColor, isHovered ? 3 : 1.5);
-            drawOutlineText(ctx, card.icon || '?', dx + w/2, dy + h/2 - 5, isHovered ? 16 : 13, COLORS.WHITE, cardColor, 'center');
-            drawOutlineText(ctx, card.name || '', dx + w/2, dy + h - 8, isHovered ? 8 : 6, COLORS.WHITE_50, COLORS.BG_DARK, 'center');
 
+            // Rarity glow behind card
+            if (card.rarity >= 2) {
+                var glowAlpha = card.rarity >= 4 ? 0.15 : 0.08;
+                drawGlow(ctx, dx + cw / 2, dy + ch / 2, cw * 0.7, cardColor, glowAlpha);
+            }
+
+            drawMatteCard(ctx, dx, dy, cw, ch, cardColor, isHovered ? 3 : 1.5);
+
+            // Icon (larger)
+            drawOutlineText(ctx, card.icon || '?', dx + cw / 2, dy + ch / 2 - 6,
+                isHovered ? 18 : 15, COLORS.WHITE, cardColor, 'center');
+
+            // Name
+            drawOutlineText(ctx, card.name || '', dx + cw / 2, dy + ch - 9,
+                isHovered ? 8 : 7, COLORS.WHITE_60, COLORS.BG_DARK, 'center');
+
+            // Hover tooltip
             if (isHovered) {
-                var popW = 130, popH = 44;
-                fillRoundRect(ctx, dx - (popW - w) / 2, dy - popH - 4, popW, popH, 6, COLORS.BLACK_70);
-                strokeRoundRect(ctx, dx - (popW - w) / 2, dy - popH - 4, popW, popH, 6, cardColor, 1);
-                drawOutlineText(ctx, card.desc || '', dx + w/2, dy - popH/2 + 4, 8, COLORS.WHITE_50, COLORS.BG_DARK, 'center');
-                drawOutlineText(ctx, '💲' + (CARD_SELL_BACK[card.rarity]||5), dx + w/2, dy - popH/2 + 18, 8, COLORS.GOLD, COLORS.BG_DARK, 'center');
+                var tw = 140, th = 48;
+                fillRoundRect(ctx, dx - (tw - cw) / 2, dy - th - 6, tw, th, 8, COLORS.BLACK_70);
+                strokeRoundRect(ctx, dx - (tw - cw) / 2, dy - th - 6, tw, th, 8, cardColor, 1.5);
+                drawOutlineText(ctx, card.desc || '', dx + cw / 2, dy - th / 2 + 2,
+                    8, COLORS.WHITE_60, COLORS.BG_DARK, 'center');
+                drawOutlineText(ctx, '💲' + (CARD_SELL_BACK[card.rarity] || 5), dx + cw / 2,
+                    dy - th / 2 + 17, 8, COLORS.GOLD, COLORS.BG_DARK, 'center');
             }
         } else {
-            // Empty slot — visible placeholder
-            fillRoundRect(ctx, dx, dy, w, h, 4, 'rgba(255,255,255,0.04)');
-            strokeRoundRect(ctx, dx, dy, w, h, 4, 'rgba(255,255,255,0.12)', 1);
-            drawOutlineText(ctx, (i + 1), dx + w/2, dy + h/2 + 2, 10, 'rgba(255,255,255,0.08)', COLORS.BG_DARK, 'center');
+            // Empty slot
+            fillRoundRect(ctx, dx, dy, cw, ch, 5, 'rgba(255,255,255,0.03)');
+            strokeRoundRect(ctx, dx, dy, cw, ch, 5, 'rgba(255,255,255,0.1)', 1);
+            drawOutlineText(ctx, '' + (j + 1), dx + cw / 2, dy + ch / 2 + 2,
+                11, 'rgba(255,255,255,0.08)', COLORS.BG_DARK, 'center');
         }
 
-        // Overflow replacing glow
-        if (G.overflowReplacing >= 0) {
-            strokeRoundRect(ctx, sx, sy, L.cardW, L.cardH, 4, COLORS.RED, 2);
+        // Overflow highlight
+        if (G.overflowReplacing >= 0 && j === G.overflowReplacing) {
+            strokeRoundRect(ctx, cx - 1, cy - 1, L.cardW + 2, L.cardH + 2, 6, COLORS.RED, 2.5);
         }
     }
 
-    // Overflow drag card
+    // === Draw card button (bottom of panel) ===
+    var canDraw = G.gold >= CARD_DRAW_COST && stateFindEmptyCardSlot() >= 0;
+    var dxb = (L.cssW - L.drawW) / 2;
+    var dyb = L.drawY;
+
+    if (canDraw && G.overflowReplacing < 0) {
+        // Active draw button — gradient fill
+        var dgrad = ctx.createLinearGradient(dxb, dyb, dxb + L.drawW, dyb);
+        dgrad.addColorStop(0, '#8b5cf6');
+        dgrad.addColorStop(0.5, '#a78bfa');
+        dgrad.addColorStop(1, '#8b5cf6');
+        fillRoundRect(ctx, dxb, dyb, L.drawW, L.drawH, 10, dgrad);
+        strokeRoundRect(ctx, dxb, dyb, L.drawW, L.drawH, 10, COLORS.GOLD, 2.5);
+
+        // Pulsing outer glow
+        if (!window._drawBtnPhase) window._drawBtnPhase = 0;
+        window._drawBtnPhase += 0.06;
+        var pulse = Math.sin(window._drawBtnPhase) * 0.25 + 0.75;
+        strokeRoundRect(ctx, dxb - 2, dyb - 2, L.drawW + 4, L.drawH + 4, 11,
+            'rgba(139,92,246,' + pulse.toFixed(2) + ')', 2);
+
+        drawOutlineText(ctx, '🃏 抽 卡', dxb + L.drawW / 2, dyb + L.drawH / 2 - 7,
+            16, COLORS.WHITE, COLORS.PURPLE, 'center');
+        drawOutlineText(ctx, '💰' + CARD_DRAW_COST, dxb + L.drawW / 2, dyb + L.drawH / 2 + 11,
+            10, COLORS.GOLD, COLORS.PURPLE, 'center');
+        window._drawCardRect = { x: dxb, y: dyb, w: L.drawW, h: L.drawH };
+    } else {
+        // Inactive draw button
+        fillRoundRect(ctx, dxb, dyb, L.drawW, L.drawH, 10, 'rgba(255,255,255,0.04)');
+        strokeRoundRect(ctx, dxb, dyb, L.drawW, L.drawH, 10,
+            'rgba(255,255,255,0.1)', 1);
+        drawOutlineText(ctx, '💰' + CARD_DRAW_COST + ' 抽卡', dxb + L.drawW / 2,
+            dyb + L.drawH / 2 + 4, 13, 'rgba(255,255,255,0.2)', COLORS.BG_DARK, 'center');
+        window._drawCardRect = { x: dxb, y: dyb, w: L.drawW, h: L.drawH };
+    }
+
+    // === Overflow drag card ===
     if (cardsDragCard && G.overflowReplacing >= 0) {
-        var mx = inputState.pointerScreenX - 25;
-        var my = inputState.pointerScreenY - 30;
-        drawMatteCard(ctx, mx, my, 50, 60, COLORS.ORANGE, 3);
-        drawOutlineText(ctx, cardsDragCard.icon || '?', mx + 25, my + 22, 16, COLORS.WHITE, COLORS.ORANGE, 'center');
-        drawOutlineText(ctx, cardsDragCard.name || '', mx + 25, my + 48, 7, COLORS.WHITE_60, COLORS.BG_DARK, 'center');
+        var mx = inputState.pointerScreenX - 28;
+        var my = inputState.pointerScreenY - 35;
+        drawMatteCard(ctx, mx, my, 56, 70, COLORS.ORANGE, 3);
+        drawOutlineText(ctx, cardsDragCard.icon || '?', mx + 28, my + 26, 18,
+            COLORS.WHITE, COLORS.ORANGE, 'center');
+        drawOutlineText(ctx, cardsDragCard.name || '', mx + 28, my + 55, 7,
+            COLORS.WHITE_60, COLORS.BG_DARK, 'center');
     }
 }
 
-// ==================== 5格道具栏 (卡槽上方) ====================
-
-function renderItemSlots(ctx, L) {
-    var totalW = 5 * L.itemW + 4 * L.itemGap;
-    var startX = (L.cssW - totalW) / 2;
-
-    // Item bar backdrop
-    var barTop = L.itemY - 4 * L.scale;
-    var barH = L.itemH + 8 * L.scale;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(0, barTop, L.cssW, barH);
-
-    // Label
-    var labelX = startX - 6 * L.scale;
-    drawOutlineText(ctx, '道具', labelX, L.itemY + L.itemH/2, 8 * L.scale, 'rgba(255,255,255,0.15)', COLORS.BG_DARK, 'right');
-
-    for (var i = 0; i < 5; i++) {
-        var sx = startX + i * (L.itemW + L.itemGap);
-        var sy = L.itemY;
-
-        var item = G.itemSlots[i];
-        if (item) {
-            fillRoundRect(ctx, sx, sy, L.itemW, L.itemH, 4, COLORS.BLACK_30);
-            strokeRoundRect(ctx, sx, sy, L.itemW, L.itemH, 4, COLORS.WHITE_15, 1);
-            drawOutlineText(ctx, item.icon || '?', sx + L.itemW/2, sy + L.itemH/2 - 3, 13, COLORS.WHITE, COLORS.BG_DARK, 'center');
-            drawOutlineText(ctx, (item.name||'').slice(0,3), sx + L.itemW/2, sy + L.itemH - 6, 6, COLORS.WHITE_30, COLORS.BG_DARK, 'center');
-        } else {
-            fillRoundRect(ctx, sx, sy, L.itemW, L.itemH, 3, 'rgba(255,255,255,0.03)');
-            strokeRoundRect(ctx, sx, sy, L.itemW, L.itemH, 3, 'rgba(255,255,255,0.08)', 1);
-            drawOutlineText(ctx, (i+1), sx + L.itemW/2, sy + L.itemH/2 + 2, 8, 'rgba(255,255,255,0.06)', COLORS.BG_DARK, 'center');
-        }
-    }
-}
+// ==================== Overlay Panels ====================
 
 function renderBossItems(ctx) {
     var cam = cameraGetPos();
@@ -309,18 +344,17 @@ function renderBossItems(ctx) {
         var item = G.bossFollowingItems[i];
         var sx = item.x - cam.x;
         var sy = item.y - cam.y;
-        drawGlow(ctx, sx, sy, 18, COLORS.GOLD, 0.4);
-        drawOutlineText(ctx, item.icon || '🚪', sx, sy, 16, COLORS.WHITE, COLORS.BG_DARK, 'center');
+        drawGlow(ctx, sx, sy, 20, COLORS.GOLD, 0.4);
+        drawOutlineText(ctx, item.icon || '🚪', sx, sy, 18,
+            COLORS.WHITE, COLORS.BG_DARK, 'center');
     }
 }
 
 function renderOverflowMode(ctx, L) {
     if (G.overflowReplacing < 0) return;
-    var cx = L.cssW / 2;
-    drawOutlineText(ctx, '🔄 点击卡槽替换 | 新卡: ' + (cardsDragCard ? cardsDragCard.name : ''), cx, L.cssH - 78 * L.scale, L.fsSmall, COLORS.ORANGE, COLORS.BG_DARK, 'center');
+    drawOutlineText(ctx, '🔄 点击卡槽替换 | 新卡: ' + (cardsDragCard ? cardsDragCard.name : ''),
+        L.cssW / 2, L.overflowY, L.fsSmall, COLORS.ORANGE, COLORS.BG_DARK, 'center');
 }
-
-// ==================== 天赋面板 ====================
 
 function renderTalentPanel(ctx, size) {
     if (!G.talentPanelOpen || G.talentChoices.length === 0) return;
@@ -328,29 +362,30 @@ function renderTalentPanel(ctx, size) {
     ctx.fillStyle = COLORS.BLACK_40;
     ctx.fillRect(0, 0, size.w, size.h);
 
-    var panelW = Math.min(300, size.w - 20);
-    var panelH = 220;
-    var px = (size.w - panelW) / 2;
-    var py = (size.h - panelH) / 2;
+    var pw = Math.min(320, size.w - 30);
+    var ph = 230;
+    var px = (size.w - pw) / 2;
+    var py = (size.h - ph) / 2;
 
-    fillRoundRect(ctx, px, py, panelW, panelH, 12, '#1a1a3a');
-    strokeRoundRect(ctx, px, py, panelW, panelH, 12, COLORS.PURPLE, 2);
-    drawOutlineText(ctx, '🌟 选择天赋 (消耗杀敌数)', px + panelW/2, py + 20, 14, COLORS.WHITE, COLORS.BG_DARK, 'center');
+    fillRoundRect(ctx, px, py, pw, ph, 14, '#151530');
+    strokeRoundRect(ctx, px, py, pw, ph, 14, COLORS.PURPLE, 2.5);
+    drawOutlineText(ctx, '🌟 选择天赋 (消耗杀敌数)', px + pw / 2, py + 24,
+        15, COLORS.WHITE, COLORS.BG_DARK, 'center');
 
     for (var i = 0; i < G.talentChoices.length; i++) {
         var t = G.talentChoices[i];
-        var ty = py + 45 + i * 55;
-        fillRoundRect(ctx, px + 15, ty, panelW - 30, 45, 6, COLORS.WHITE_06);
-        strokeRoundRect(ctx, px + 15, ty, panelW - 30, 45, 6, COLORS.WHITE_15, 1);
-        drawOutlineText(ctx, t.icon + ' ' + t.name, px + 30, ty + 14, 13, COLORS.WHITE, COLORS.BG_DARK);
-        drawOutlineText(ctx, t.desc, px + 30, ty + 32, 10, COLORS.WHITE_40, COLORS.BG_DARK);
+        var ty = py + 50 + i * 60;
+        fillRoundRect(ctx, px + 15, ty, pw - 30, 50, 8, COLORS.WHITE_06);
+        strokeRoundRect(ctx, px + 15, ty, pw - 30, 50, 8, COLORS.WHITE_12, 1);
+        drawOutlineText(ctx, t.icon + ' ' + t.name, px + 30, ty + 16,
+            14, COLORS.WHITE, COLORS.BG_DARK);
+        drawOutlineText(ctx, t.desc, px + 30, ty + 36,
+            10, COLORS.WHITE_40, COLORS.BG_DARK);
 
         if (!window._talentRects) window._talentRects = [];
-        window._talentRects[i] = {x:px+15, y:ty, w:panelW-30, h:45};
+        window._talentRects[i] = { x: px + 15, y: ty, w: pw - 30, h: 50 };
     }
 }
-
-// ==================== 修仙专属UI ====================
 
 function renderCultivationUI(ctx) {
     if (!stateIsCultivation() || !G.player) return;
@@ -360,120 +395,108 @@ function renderCultivationUI(ctx) {
     if (!ui) return;
 
     var L2 = uiLayout(ctx.canvas.width, ctx.canvas.height);
-    var cx = L2.cssW / 2;
-    var s = L2.scale;
 
-    // Compact floating panel — centered, constrained to canvas
-    var uw = Math.min(280 * s, L2.cssW * 0.7);
-    var ux = cx - uw / 2;
-    var uy = 55 * s;
+    // Compact floating panel
+    var uw = Math.min(280, L2.cssW - 80);
+    var ux = (L2.cssW - uw) / 2;
+    var uy = L2.safeTop + 50;
 
-    // Ensure panel doesn't overflow right edge
-    if (ux + uw > L2.cssW - 4 * s) {
-        ux = L2.cssW - uw - 4 * s;
-    }
-    if (ux < 4 * s) {
-        ux = 4 * s;
-    }
+    fillRoundRect(ctx, ux, uy, uw, 48, 10, COLORS.BLACK_70);
+    strokeRoundRect(ctx, ux, uy, uw, 48, 10, COLORS.PURPLE, 2);
+    drawOutlineText(ctx, ui.weaponIcon + ' 修仙武器 Lv.' + G.cultivationWeaponLevel,
+        ux + uw / 2, uy + 18, 13, COLORS.WHITE, COLORS.BG_DARK, 'center');
+    drawOutlineText(ctx, '升级 ' + G.cultivationWeaponUpgrades + '次  |  回收',
+        ux + uw / 2, uy + 36, 10, COLORS.GREEN, COLORS.BG_DARK, 'center');
 
-    fillRoundRect(ctx, ux, uy, uw, 40 * s, 8, COLORS.BLACK_70);
-    strokeRoundRect(ctx, ux, uy, uw, 40 * s, 8, COLORS.PURPLE, 1);
-    drawOutlineText(ctx, ui.weaponIcon + ' 修仙武器 Lv.' + G.cultivationWeaponLevel, ux + uw/2, uy + 16 * s, 12 * s, COLORS.WHITE, COLORS.BG_DARK, 'center');
-    drawOutlineText(ctx, '升级 ' + G.cultivationWeaponUpgrades + '次  | 回收', ux + uw/2, uy + 32 * s, 10 * s, COLORS.GREEN, COLORS.BG_DARK, 'center');
-
-    // L2 selection panel (below if active)
+    // L2 selection
     if (!G.cultivationL2Path && G.cultivationL2Pool.length > 0 && G.cultivationRecycleCount >= 5) {
-        var selY = uy + 48 * s;
+        var sy = uy + 56;
         for (var i = 0; i < G.cultivationL2Pool.length; i++) {
             var c2 = G.cultivationL2Pool[i];
-            fillRoundRect(ctx, ux, selY + i * 32 * s, uw, 28 * s, 4, COLORS.WHITE_06);
-            strokeRoundRect(ctx, ux, selY + i * 32 * s, uw, 28 * s, 4, COLORS.WHITE_15, 1);
-            drawOutlineText(ctx, c2.icon + ' ' + c2.name, ux + uw/2, selY + i * 32 * s + 16 * s, 10 * s, COLORS.WHITE, COLORS.BG_DARK, 'center');
+            fillRoundRect(ctx, ux, sy + i * 36, uw, 32, 6, COLORS.WHITE_06);
+            strokeRoundRect(ctx, ux, sy + i * 36, uw, 32, 6, COLORS.WHITE_15, 1);
+            drawOutlineText(ctx, c2.icon + ' ' + c2.name, ux + uw / 2,
+                sy + i * 36 + 18, 11, COLORS.WHITE, COLORS.BG_DARK, 'center');
         }
-        window._cultivationL2Rects = G.cultivationL2Pool.map(function(c,i){return {x:ux, y:selY+i*32*s, w:uw, h:28*s, index:i};});
+        window._cultivationL2Rects = G.cultivationL2Pool.map(function (c, k) {
+            return { x: ux, y: sy + k * 36, w: uw, h: 32, index: k };
+        });
     } else {
         window._cultivationL2Rects = null;
     }
 }
 
-// ==================== 英雄蓝图侧边栏 ====================
-
 function renderBlueprint(ctx, size) {
     if (!G.blueprintOpen) return;
 
     var L = uiLayout(size.w, size.h);
-    var bw = Math.min(260 * L.scale, size.w * 0.38);
+    var bw = Math.min(260, size.w * 0.42);
     var bx = size.w - bw;
 
-    // Dim background
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    // Dim overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(0, 0, size.w, size.h);
 
+    // Sidebar
     fillRoundRect(ctx, bx, 0, bw, size.h, 0, 'rgba(10,10,30,0.97)');
     strokeRoundRect(ctx, bx, 0, bw, size.h, 0, COLORS.WHITE_08, 2);
 
     var hero = stateGetHero();
-    var yo = 52 * L.scale;
+    var yo = L.safeTop + 14;
 
-    // Close X button
-    var closeX = bx + bw - 18 * L.scale;
-    var closeY = 10 * L.scale;
-    drawOutlineText(ctx, '✕', closeX, closeY + 12 * L.scale, 16 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
-    window._blueprintCloseRect = {x: closeX - 14 * L.scale, y: closeY, w: 30 * L.scale, h: 30 * L.scale};
+    // Close X
+    var clx = bx + bw - 24, cly = yo;
+    fillRoundRect(ctx, clx - 8, cly - 4, 28, 28, 6, COLORS.BLACK_40);
+    strokeRoundRect(ctx, clx - 8, cly - 4, 28, 28, 6, COLORS.WHITE_08, 1);
+    drawOutlineText(ctx, '✕', clx + 6, cly + 6, 14, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
+    window._blueprintCloseRect = { x: clx - 10, y: cly - 6, w: 32, h: 32 };
 
-    drawOutlineText(ctx, hero.icon + ' ' + hero.name, bx + 16 * L.scale, yo, 14 * L.scale, hero.color, COLORS.BG_DARK);
-    yo += 22 * L.scale;
-
-    drawOutlineText(ctx, '══ 核心组件 ══', bx + 10 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
-    yo += 16 * L.scale;
+    yo += 8;
+    drawOutlineText(ctx, hero.icon + ' ' + hero.name, bx + 16, yo, 14, hero.color, COLORS.BG_DARK);
+    yo += 24;
+    drawOutlineText(ctx, '══ 核心组件 ══', bx + 14, yo, 10, COLORS.WHITE_40, COLORS.BG_DARK);
+    yo += 18;
 
     var hasCards = false;
     for (var i = 0; i < 6; i++) {
         var card = G.cardSlots[i];
         if (card) {
             hasCards = true;
-            drawOutlineText(ctx, card.icon + ' ' + card.name, bx + 18 * L.scale, yo, 9 * L.scale, COLORS.WHITE_60, COLORS.BG_DARK);
-            yo += 15 * L.scale;
+            drawOutlineText(ctx, card.icon + ' ' + card.name, bx + 18, yo, 10, COLORS.WHITE_60, COLORS.BG_DARK);
+            yo += 16;
         }
     }
     if (!hasCards) {
-        drawOutlineText(ctx, '(空的 — 抽卡获取组件)', bx + 18 * L.scale, yo, 8 * L.scale, COLORS.WHITE_20, COLORS.BG_DARK);
-        yo += 12 * L.scale;
+        drawOutlineText(ctx, '(空的 — 抽卡获取)', bx + 18, yo, 9, COLORS.WHITE_20, COLORS.BG_DARK);
+        yo += 14;
     }
 
-    yo += 6 * L.scale;
-    drawOutlineText(ctx, '══ 外挂模块 ══', bx + 10 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
-    yo += 16 * L.scale;
+    yo += 8;
+    drawOutlineText(ctx, '══ 外挂模块 ══', bx + 14, yo, 10, COLORS.WHITE_40, COLORS.BG_DARK);
+    yo += 18;
 
     if (G.talents.length > 0) {
         for (i = 0; i < G.talents.length; i++) {
-            drawOutlineText(ctx, G.talents[i].icon + ' ' + G.talents[i].name, bx + 18 * L.scale, yo, 9 * L.scale, COLORS.WHITE_60, COLORS.BG_DARK);
-            yo += 13 * L.scale;
+            drawOutlineText(ctx, G.talents[i].icon + ' ' + G.talents[i].name,
+                bx + 18, yo, 10, COLORS.WHITE_60, COLORS.BG_DARK);
+            yo += 15;
         }
     } else {
-        drawOutlineText(ctx, '(无天赋)', bx + 18 * L.scale, yo, 8 * L.scale, COLORS.WHITE_20, COLORS.BG_DARK);
-        yo += 12 * L.scale;
+        drawOutlineText(ctx, '(无天赋)', bx + 18, yo, 9, COLORS.WHITE_20, COLORS.BG_DARK);
+        yo += 14;
     }
 
     if (stateIsCultivation() && G.cultivationL3.length > 0) {
-        yo += 6 * L.scale;
-        drawOutlineText(ctx, '══ 羁绊回路 ══', bx + 10 * L.scale, yo, 10 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK);
-        yo += 16 * L.scale;
+        yo += 8;
+        drawOutlineText(ctx, '══ 羁绊回路 ══', bx + 14, yo, 10, COLORS.WHITE_40, COLORS.BG_DARK);
+        yo += 18;
         for (i = 0; i < G.cultivationL3.length; i++) {
-            drawOutlineText(ctx, G.cultivationL3[i].icon + ' ' + G.cultivationL3[i].name, bx + 18 * L.scale, yo, 8 * L.scale, COLORS.PURPLE, COLORS.BG_DARK);
-            yo += 13 * L.scale;
+            drawOutlineText(ctx, G.cultivationL3[i].icon + ' ' + G.cultivationL3[i].name,
+                bx + 18, yo, 9, COLORS.PURPLE, COLORS.BG_DARK);
+            yo += 14;
         }
     }
-
-    // Blueprint toggle button (small, top-right of game area)
-    var toggleBtnX = size.w - bw - 22 * L.scale;
-    var toggleBtnY = 10 * L.scale;
-    fillRoundRect(ctx, toggleBtnX, toggleBtnY, 20 * L.scale, 20 * L.scale, 4, COLORS.WHITE_08);
-    drawOutlineText(ctx, '📋', toggleBtnX + 10 * L.scale, toggleBtnY + 14 * L.scale, 11 * L.scale, COLORS.WHITE_40, COLORS.BG_DARK, 'center');
-    window._blueprintToggleRect = {x: toggleBtnX, y: toggleBtnY, w: 20 * L.scale, h: 20 * L.scale};
 }
-
-// ==================== 游戏结束面板 ====================
 
 function renderGameOver(ctx, size) {
     if (G.phase !== 'over') return;
@@ -482,54 +505,44 @@ function renderGameOver(ctx, size) {
     ctx.fillRect(0, 0, size.w, size.h);
 
     var L = uiLayout(size.w, size.h);
-    var pw = Math.min(280, size.w - 20);
-    var ph = 300 * L.scale;
+    var pw = Math.min(290, size.w - 24);
+    var ph = 290;
     var px = (size.w - pw) / 2, py = (size.h - ph) / 2;
-    fillRoundRect(ctx, px, py, pw, ph, 16, '#1a1a3a');
-    strokeRoundRect(ctx, px, py, pw, ph, 16, COLORS.PURPLE, 2);
+
+    fillRoundRect(ctx, px, py, pw, ph, 18, '#151530');
+    strokeRoundRect(ctx, px, py, pw, ph, 18, COLORS.PURPLE, 2.5);
 
     var hero = stateGetHero();
     var grade = G.score > 5000 ? 'S' : G.score > 3000 ? 'A' : G.score > 1500 ? 'B' : 'C';
+    var gradeColor = grade === 'S' ? COLORS.GOLD : grade === 'A' ? COLORS.PURPLE : grade === 'B' ? COLORS.CYAN : COLORS.WHITE_60;
 
-    drawOutlineText(ctx, hero.icon + ' ' + hero.name, px + pw/2, py + 24, 18 * L.scale, hero.color, COLORS.BG_DARK, 'center');
-    drawOutlineText(ctx, grade + ' 级评价', px + pw/2, py + 50, 22 * L.scale, COLORS.GOLD, COLORS.BG_DARK, 'center');
-    drawOutlineText(ctx, '得分: ' + Math.round(G.score), px + pw/2, py + 76, 14 * L.scale, COLORS.WHITE, COLORS.BG_DARK, 'center');
+    drawOutlineText(ctx, hero.icon + ' ' + hero.name, px + pw / 2, py + 26,
+        18, hero.color, COLORS.BG_DARK, 'center');
+    drawOutlineText(ctx, grade + ' 级评价', px + pw / 2, py + 54,
+        24, gradeColor, COLORS.BG_DARK, 'center');
+    drawOutlineText(ctx, '得分: ' + Math.round(G.score), px + pw / 2, py + 82,
+        14, COLORS.WHITE, COLORS.BG_DARK, 'center');
 
-    var iy = py + 100;
     var rows = [
         ['💀 击杀', G.finalKills],
         ['🌊 最高波次', G.finalWave],
-        ['⏱️ 存活时间', formatTime(G.finalTime)],
-        ['⚔️ 难度', (DIFFICULTY[G.difficulty]||{}).name||'未知']
+        ['⏱ 存活时间', formatTime(G.finalTime)],
+        ['⚔ 难度', (DIFFICULTY[G.difficulty] || {}).name || '未知']
     ];
     for (var r = 0; r < rows.length; r++) {
-        drawOutlineText(ctx, rows[r][0] + ': ' + rows[r][1], px + pw/2, iy + r * 24 * L.scale, 12 * L.scale, COLORS.WHITE_50, COLORS.BG_DARK, 'center');
+        drawOutlineText(ctx, rows[r][0] + ': ' + rows[r][1],
+            px + pw / 2, py + 110 + r * 26, 12, COLORS.WHITE_50, COLORS.BG_DARK, 'center');
     }
 
-    var btnX = px + 40 * L.scale, btnY = py + ph - 50 * L.scale, btnW = pw - 80 * L.scale, btnH = 36 * L.scale;
-    fillRoundRect(ctx, btnX, btnY, btnW, btnH, 8, COLORS.CYAN);
-    drawOutlineText(ctx, '🔄 再来一局', btnX + btnW/2, btnY + btnH/2, 14 * L.scale, COLORS.WHITE, COLORS.CYAN, 'center');
-    window._retryRect = {x:btnX, y:btnY, w:btnW, h:btnH};
+    var btnX = px + 40, btnY = py + ph - 54, btnW = pw - 80, btnH = 40;
+    fillRoundRect(ctx, btnX, btnY, btnW, btnH, 10, COLORS.CYAN);
+    drawOutlineText(ctx, '🔄 再来一局', btnX + btnW / 2, btnY + btnH / 2,
+        15, COLORS.WHITE, COLORS.CYAN, 'center');
+    window._retryRect = { x: btnX, y: btnY, w: btnW, h: btnH };
 }
 
 function formatTime(seconds) {
     var m = Math.floor(seconds / 60);
     var s = Math.floor(seconds % 60);
     return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-}
-
-// ==================== 小地图信息 ====================
-
-function renderMiniInfo(ctx, L) {
-    var cx = L.cssW / 2;
-    if (G.monsters.length > 0) {
-        drawOutlineText(ctx, '👾×' + G.monsters.length, cx, L.cssH - 120 * L.scale, 9 * L.scale, COLORS.WHITE_20, COLORS.BG_DARK, 'center');
-    }
-    // Wave time remaining
-    if (G.waveEndTime > 0) {
-        var remain = Math.max(0, Math.ceil((G.waveEndTime - G.time)));
-        if (remain > 0) {
-            drawOutlineText(ctx, '⏱' + remain + 's', cx, L.cssH - 133 * L.scale, 10 * L.scale, COLORS.WHITE_30, COLORS.BG_DARK, 'center');
-        }
-    }
 }
