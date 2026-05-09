@@ -97,17 +97,30 @@ function uiLayout(canvasW, canvasH) {
 
 function renderUI(ctx, size) {
     var L = uiLayout(size.w, size.h);
-    renderHUD(ctx, L);
-    renderBlueprintToggle(ctx, L);
-    renderCardSlots(ctx, L);
-    renderItemSlots(ctx, L);
-    renderBossItems(ctx);
-    renderOverflowMode(ctx, L);
-    renderTalentPanel(ctx, size);
-    renderCultivationUI(ctx);
-    renderBlueprint(ctx, size);
-    renderGameOver(ctx, size);
-    renderMiniInfo(ctx, L);
+    _safeCall(function(){ renderHUD(ctx, L); });
+    _safeCall(function(){ renderBlueprintToggle(ctx, L); });
+    _safeCall(function(){ renderCardSlots(ctx, L); });
+    _safeCall(function(){ renderItemSlots(ctx, L); });
+    _safeCall(function(){ renderBossItems(ctx); });
+    _safeCall(function(){ renderOverflowMode(ctx, L); });
+    _safeCall(function(){ renderTalentPanel(ctx, size); });
+    _safeCall(function(){ renderCultivationUI(ctx); });
+    _safeCall(function(){ renderBlueprint(ctx, size); });
+    _safeCall(function(){ renderGameOver(ctx, size); });
+    _safeCall(function(){ renderMiniInfo(ctx, L); });
+}
+
+/** Safe call — logs errors without crashing the rest of renderUI */
+function _safeCall(fn) {
+    try { fn(); } catch(e) {
+        if (!window.__safeCallErrors) window.__safeCallErrors = {};
+        var name = (e.stack || '').split('\n')[1] || '';
+        var key = name.trim().split(' ')[0] || '?';
+        if (!window.__safeCallErrors[key]) {
+            window.__safeCallErrors[key] = true;
+            console.warn('[renderUI] ' + key + ': ' + e.message);
+        }
+    }
 }
 
 // ==================== HUD ====================

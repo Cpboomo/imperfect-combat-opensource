@@ -68,9 +68,9 @@ function gameRouteClick(wx, wy) {
         }
     }
 
-    // Check card slot clicks (centered bottom row)
+    // Check card slot clicks (centered bottom row, CSS pixels)
     var cardTotalW = 6 * L.cardW + 5 * L.cardGap;
-    var cardStartX = (cw - cardTotalW) / 2;
+    var cardStartX = (L.cssW - cardTotalW) / 2;
     for (var i = 0; i < 6; i++) {
         var cardSx = cardStartX + i * (L.cardW + L.cardGap);
         if (sx >= cardSx && sx <= cardSx + L.cardW && sy >= L.cardY && sy <= L.cardY + L.cardH) {
@@ -85,7 +85,7 @@ function gameRouteClick(wx, wy) {
 
     // Check item slot clicks (centered, above cards)
     var itemTotalW = 5 * L.itemW + 4 * L.itemGap;
-    var itemStartX = (cw - itemTotalW) / 2;
+    var itemStartX = (L.cssW - itemTotalW) / 2;
     for (i = 0; i < 5; i++) {
         var itemSx = itemStartX + i * (L.itemW + L.itemGap);
         if (sx >= itemSx && sx <= itemSx + L.itemW && sy >= L.itemY && sy <= L.itemY + L.itemH) {
