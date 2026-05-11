@@ -137,28 +137,31 @@ var WAVE_TIME=CHAPTER_TIME/WAVES_PER_CHAPTER; // 1.5分钟每波
 var canvas=document.getElementById('game-canvas');
 var ctx=canvas.getContext('2d');
 var wrapper=document.getElementById('wrapper');
-var dpr=window.devicePixelRatio||1;
-resize();
+var dpr=Math.min(window.devicePixelRatio||1,2); // 限制DPR防性能问题
 
 function resize(){
   var vw=window.innerWidth,vh=window.innerHeight;
-  var scale=Math.min(vw/FIXED_W,vh/FIXED_H);
+  // 飞书底部工具栏占约44px，预留安全区
+  var safeBottom=44,safeTop=0;
+  var availH=vh-safeBottom;
+  var scale=Math.min(vw/FIXED_W,availH/FIXED_H);
   var dw=Math.round(FIXED_W*scale),dh=Math.round(FIXED_H*scale);
-  var ox=Math.round((vw-dw)/2),oy=Math.round((vh-dh)/2);
+  var ox=Math.round((vw-dw)/2),oy=Math.round((availH-dh)/2);
   canvas.width=FIXED_W*dpr;canvas.height=FIXED_H*dpr;
-  canvas.style.width=dw+'px';canvas.style.height=dh+'px';
-  canvas.style.left=ox+'px';canvas.style.top=oy+'px';
-  wrapper.style.transform='translate('+ox+'px,'+oy+'px) scale('+scale+')';
+  // Canvas填满wrapper，wrapper由transform控制位置
+  canvas.style.width='100%';canvas.style.height='100%';
+  canvas.style.left='0';canvas.style.top='0';
   wrapper.style.width=FIXED_W+'px';wrapper.style.height=FIXED_H+'px';
+  wrapper.style.transform='translate('+ox+'px,'+oy+'px) scale('+scale+')';
   wrapper.style.transformOrigin='top left';
-  G._scale=scale;G._ox=ox;G._oy=oy;
+  G._scale=scale;G._ox=ox;G._oy=oy;G._safeBottom=safeBottom;
 }
 window.addEventListener('resize',resize);
 window.addEventListener('orientationchange',function(){setTimeout(resize,300)});
 
 // ==================== 游戏状态 ====================
 var G={
-  hero:{x:195,y:580,hp:100,maxHp:100,atk:10,spd:2,atkSpeed:1,atkRange:120,atkTimer:0,
+  hero:{x:195,y:422,hp:100,maxHp:100,atk:10,spd:2,atkSpeed:1,atkRange:120,atkTimer:0,
     crit:0,dodge:0,vx:0,vy:0,targetVx:0,targetVy:0},
   monsters:[],cards:[],projectiles:[],particles:[],flyingGold:[],
   gold:100,score:0,kills:0,phase:'playing', // playing | over | win
@@ -176,6 +179,7 @@ var G={
   ],
   _scale:1,_ox:0,_oy:0
 };
+resize(); // 必须在G定义之后调用
 
 // ==================== 模块4：DOM UI 初始化 ====================
 var cardRow=document.getElementById('card-row');
@@ -612,7 +616,7 @@ function endGame(win){
 }
 
 function restartGame(){
-  G.hero.x=195;G.hero.y=580;G.hero.hp=100;G.hero.maxHp=100;G.hero.atk=10;G.hero.spd=2;
+  G.hero.x=195;G.hero.y=422;G.hero.hp=100;G.hero.maxHp=100;G.hero.atk=10;G.hero.spd=2;
   G.hero.atkSpeed=1;G.hero.crit=0;G.hero.dodge=0;G.hero.vx=0;G.hero.vy=0;G.hero.targetVx=0;G.hero.targetVy=0;
   G.hero.dmgReduce=0;G.hero.lifesteal=0;G.hero.fireDmg=0;G.hero.slow=0;G.hero.atkTimer=0;
   G.monsters=[];G.projectiles=[];G.particles=[];G.flyingGold=[];G.cards=[];G.gold=100;
@@ -628,11 +632,12 @@ function formatTime(s){var m=Math.floor(s/60),sec=Math.floor(s%60);return String
 
 // ==================== Canvas 渲染 ====================
 function render(){
-  var s=G._scale;
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,FIXED_W,FIXED_H);
-  // 背景网格
+  ctx.setTransform(1,0,0,1,0,0); // 重置变换
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.scale(dpr,dpr); // Canvas物理像素→逻辑像素
+  // 背景
   ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,FIXED_W,FIXED_H);
+  // 网格
   ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
   for(var x=0;x<FIXED_W;x+=30)for(var y=0;y<FIXED_H;y+=30){ctx.strokeRect(x,y,30,30)}
 
@@ -737,9 +742,7 @@ document.addEventListener('keyup',function(e){
 });
 
 // ==================== 启动 ====================
-resize();spawnWave();
-// 初始给点金币体验
-G.gold=100;updateCardDOM();updateStatPanel();
+spawnWave();updateCardDOM();updateStatPanel();
 requestAnimationFrame(gameLoop);
 </script>
 </body>
