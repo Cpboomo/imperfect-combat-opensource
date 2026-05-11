@@ -441,7 +441,7 @@ function updateProjectiles(dt){
       for(var j=G.monsters.length-1;j>=0;j--){
         var m=G.monsters[j];if(distSq(p.x,p.y,m.x,m.y)>=400)continue;
         var dmg=p.atk;
-        if(_nextCritIsDoubled){dmg*=2;_nextCritIsDoubled=false}
+        if(_nextCritIsDoubled){dmg*=2;_nextCritIsDoubled=false;_nextCritDoubled=false}
         else if(p.crit)dmg*=2;
         dmg+=p.fireDmg;
         m.hp-=dmg;
