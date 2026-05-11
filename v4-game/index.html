@@ -635,11 +635,14 @@ function render(){
   ctx.setTransform(1,0,0,1,0,0); // 重置变换
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.scale(dpr,dpr); // Canvas物理像素→逻辑像素
-  // 背景
-  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,FIXED_W,FIXED_H);
-  // 网格
-  ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  // 背景 — 暗色但可见
+  ctx.fillStyle='#111128';ctx.fillRect(0,0,FIXED_W,FIXED_H);
+  // 可见的网格
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
   for(var x=0;x<FIXED_W;x+=30)for(var y=0;y<FIXED_H;y+=30){ctx.strokeRect(x,y,30,30)}
+  // 战场边界框
+  ctx.strokeStyle='rgba(139,92,246,0.3)';ctx.lineWidth=3;
+  ctx.strokeRect(2,2,FIXED_W-4,FIXED_H-4);
 
   // 怪物
   for(var i=0;i<G.monsters.length;i++){
@@ -662,12 +665,17 @@ function render(){
     ctx.restore();
   }
 
-  // 英雄
+  // 英雄 — 大号发光角色
   ctx.save();
-  ctx.fillStyle='rgba(59,130,246,0.2)';ctx.beginPath();ctx.arc(G.hero.x,G.hero.y,22,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(G.hero.x,G.hero.y,16,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2.5;ctx.stroke();
-  ctx.fillStyle='#fff';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  // 外光晕
+  ctx.fillStyle='rgba(59,130,246,0.3)';ctx.beginPath();ctx.arc(G.hero.x,G.hero.y,32,0,Math.PI*2);ctx.fill();
+  // 中圈
+  ctx.fillStyle='rgba(59,130,246,0.5)';ctx.beginPath();ctx.arc(G.hero.x,G.hero.y,24,0,Math.PI*2);ctx.fill();
+  // 身体
+  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(G.hero.x,G.hero.y,20,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+  // 图标
+  ctx.fillStyle='#fff';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('⚔',G.hero.x,G.hero.y);
   ctx.restore();
 
@@ -704,12 +712,16 @@ function render(){
     ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
     ctx.restore();
   }
+  // 状态文字（调试+确认游戏在跑）
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='10px monospace';ctx.textAlign='left';
+  ctx.fillText('怪:'+G.monsters.length+' 杀:'+G.kills+' FPS:'+Math.round(G._fps||0),8,20);
 }
 
 // ==================== 游戏循环 ====================
-var lastTime=0;
+var lastTime=0,fpsTime=0,fpsCount=0;
 function gameLoop(ts){
   if(lastTime===0)lastTime=ts;var dt=Math.min((ts-lastTime)/1000,0.1);lastTime=ts;
+  fpsCount++;if(ts-fpsTime>=1000){G._fps=fpsCount;fpsCount=0;fpsTime=ts;}
   if(G.phase==='playing'){
     updateMovement(dt);
     updateAttack(dt);
@@ -743,6 +755,8 @@ document.addEventListener('keyup',function(e){
 
 // ==================== 启动 ====================
 spawnWave();updateCardDOM();updateStatPanel();
+// 立即刷5只怪在可见区域
+for(var _s=0;_s<5;_s++)spawnMonster(Math.random()<0.25?'ranged':'melee');
 requestAnimationFrame(gameLoop);
 </script>
 </body>
