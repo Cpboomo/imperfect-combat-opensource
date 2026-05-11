@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>不完美作战 v4.0</title><!-- v4.0-r2 fix canvas + init + safearea -->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;position:fixed;top:0;left:0;
+  background:#0a0a1a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#wrapper{position:fixed;top:0;left:0;width:100%;height:100%}
+#game-canvas{position:absolute;display:block;image-rendering:pixelated}
+/* === 模块2：倒计时 === */
+#timer{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:20;
+  font-size:18px;font-weight:900;color:#ffd700;text-shadow:0 2px 6px rgba(0,0,0,0.8);
+  pointer-events:none;letter-spacing:2px}
+/* === 模块3：属性面板（左下角）=== */
+#stat-panel{position:absolute;bottom:120px;left:8px;z-index:30;
+  background:rgba(6,6,20,0.9);border:1.5px solid rgba(255,255,255,0.15);
+  border-radius:10px;padding:8px 10px;width:120px;overflow:hidden;
+  transition:height 0.3s ease;height:70px;box-shadow:0 4px 12px rgba(0,0,0,0.4)}
+#stat-panel.expanded{height:150px}
+#stat-panel .stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+#stat-panel .stat-label{font-size:9px;color:rgba(255,255,255,0.5)}
+#stat-panel .stat-val{font-size:10px;color:#fff;font-weight:600}
+#stat-hp-bar{width:100%;height:8px;border-radius:4px;background:rgba(255,255,255,0.1);margin-bottom:4px;overflow:hidden}
+#stat-hp-fill{height:100%;border-radius:4px;background:#22c55e;transition:width 0.3s,background 0.3s}
+#stat-extra{display:none}#stat-panel.expanded #stat-extra{display:block}
+#stat-toggle{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+  width:24px;height:16px;border:none;background:none;color:rgba(255,255,255,0.4);
+  font-size:12px;cursor:pointer;line-height:1}
+/* === 模块4：卡槽 === */
+#card-row{position:absolute;bottom:70px;left:0;right:0;z-index:25;display:flex;justify-content:center;gap:5px;pointer-events:none}
+#card-row>*{pointer-events:auto}
+.card-slot{width:52px;height:64px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.15);
+  background:rgba(6,6,20,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;transition:transform 0.15s,border-color 0.15s,box-shadow 0.15s;
+  box-shadow:0 4px 8px rgba(0,0,0,0.3)}
+.card-slot:active{transform:scale(1.1)}
+.card-slot .card-icon{font-size:20px;line-height:1}
+.card-slot .card-name{font-size:7px;color:rgba(255,255,255,0.6);margin-top:2px;max-width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.card-slot .card-level{font-size:7px;color:#ffd700;margin-top:1px}
+.card-slot .slot-num{font-size:11px;color:rgba(255,255,255,0.12)}
+.card-slot.has-card{background:rgba(255,255,255,0.06)}
+.card-slot.overflow-active{border-color:#f59e0b!important;box-shadow:0 0 12px rgba(245,158,11,0.5)!important;animation:overflowBlink 0.5s ease-in-out infinite alternate}
+@keyframes overflowBlink{from{border-color:#f59e0b}to{border-color:#ef4444}}
+/* === 模块4：抽卡按钮 === */
+#btn-draw{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:30;
+  width:200px;height:36px;border-radius:10px;border:2px solid #ffd700;
+  background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;font-size:14px;font-weight:700;
+  cursor:pointer;letter-spacing:1px;box-shadow:0 2px 10px rgba(139,92,246,0.3)}
+/* === 模块4：金币显示 === */
+#gold-display{position:absolute;top:12px;right:12px;z-index:30;
+  font-size:14px;font-weight:700;color:#ffd700;text-shadow:0 1px 3px rgba(0,0,0,0.6)}
+/* === 模块4：溢出替换提示 === */
+#overflow-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:40;
+  background:rgba(0,0,0,0.8);color:#f59e0b;padding:10px 20px;border-radius:10px;
+  font-size:13px;font-weight:600;display:none;text-align:center;
+  border:1px solid rgba(245,158,11,0.5);pointer-events:none}
+/* === 模块4：卡牌简介 === */
+#card-tooltip{position:absolute;z-index:50;background:rgba(0,0,0,0.9);border:1px solid rgba(255,255,255,0.2);
+  border-radius:10px;padding:12px;display:none;pointer-events:auto;min-width:140px;
+  text-align:center;font-size:11px;line-height:1.5}
+#card-tooltip .tt-name{font-size:14px;font-weight:700;margin-bottom:4px}
+#card-tooltip .tt-desc{color:rgba(255,255,255,0.6);margin-bottom:8px;font-size:10px}
+#card-tooltip .tt-sell{display:inline-block;padding:4px 14px;border-radius:6px;border:1px solid #ef4444;
+  color:#ef4444;font-size:11px;cursor:pointer;background:rgba(239,68,68,0.1)}
+/* === 模块2：波次提示 === */
+#wave-toast{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);z-index:50;
+  font-size:22px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);
+  opacity:0;transition:opacity 0.3s;pointer-events:none}
+/* === Game Over / Win === */
+#end-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:60;
+  background:#151530;border:2px solid #8b5cf6;border-radius:16px;padding:24px;text-align:center;
+  display:none;min-width:260px;box-shadow:0 0 40px rgba(139,92,246,0.3)}
+#end-panel h2{font-size:22px;margin-bottom:8px}
+#end-panel .end-grade{font-size:32px;font-weight:900;margin:8px 0}
+#end-panel .end-stat{font-size:12px;color:rgba(255,255,255,0.5);margin:3px 0}
+#end-panel .end-stat span{color:#fff}
+#btn-retry{margin-top:14px;padding:10px 40px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,#8b5cf6,#06b6d4);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+/* === 章节名 === */
+#chapter-name{position:absolute;top:40px;left:50%;transform:translateX(-50%);z-index:15;
+  font-size:11px;color:rgba(255,255,255,0.25);pointer-events:none;letter-spacing:2px}
+</style>
+</head>
+<body>
+<div id="wrapper">
+  <canvas id="game-canvas"></canvas>
+  <!-- 模块2：倒计时 -->
+  <div id="timer">30:00</div>
+  <!-- 模块2：章节名 -->
+  <div id="chapter-name">平原</div>
+  <!-- 模块4：金币 -->
+  <div id="gold-display">💰0</div>
+  <!-- 模块3：属性面板 -->
+  <div id="stat-panel">
+    <div id="stat-hp-bar"><div id="stat-hp-fill" style="width:100%"></div></div>
+    <div class="stat-row"><span class="stat-label">❤ HP</span><span class="stat-val" id="st-hp">100/100</span></div>
+    <div class="stat-row"><span class="stat-label">⚔ 攻击</span><span class="stat-val" id="st-atk">10</span></div>
+    <div class="stat-row"><span class="stat-label">⏱ 攻速</span><span class="stat-val" id="st-spd">1.0</span></div>
+    <div id="stat-extra">
+      <div class="stat-row"><span class="stat-label">🎯 暴击</span><span class="stat-val" id="st-crit">0%</span></div>
+      <div class="stat-row"><span class="stat-label">💨 闪避</span><span class="stat-val" id="st-dodge">0%</span></div>
+      <div class="stat-row"><span class="stat-label">🏃 移速</span><span class="stat-val" id="st-move">2.0</span></div>
+      <div class="stat-row"><span class="stat-label">💰 金币</span><span class="stat-val" id="st-gold">0</span></div>
+    </div>
+    <button id="stat-toggle">▼</button>
+  </div>
+  <!-- 模块4：6格卡槽 -->
+  <div id="card-row"></div>
+  <!-- 模块4：抽卡按钮 -->
+  <button id="btn-draw">💰 抽卡 (50)</button>
+  <!-- 模块4：溢出替换提示 -->
+  <div id="overflow-hint">卡槽已满！请选择一张旧卡替换</div>
+  <!-- 模块4：卡牌简介浮窗 -->
+  <div id="card-tooltip"></div>
+  <!-- 模块2：波次提示 -->
+  <div id="wave-toast"></div>
+  <!-- Game Over / Win -->
+  <div id="end-panel"></div>
+</div>
+
+<script>
+'use strict';
+// ==================== 常量 ====================
+var FIXED_W=390, FIXED_H=844;
+var MAX_MONSTERS=30, MAX_CARDS=6, CARD_COST=50, CARD_SELL=25;
+var CHAPTER_NAMES=['平原','森林','沙漠','雪山','深渊'];
+var WAVES_PER_CHAPTER=4, CHAPTER_COUNT=5;
+var TOTAL_TIME=30*60; // 30分钟秒数
+var CHAPTER_TIME=TOTAL_TIME/CHAPTER_COUNT; // 6分钟每大关
+var WAVE_TIME=CHAPTER_TIME/WAVES_PER_CHAPTER; // 1.5分钟每波
+
+// ==================== Canvas 初始化 ====================
+var canvas=document.getElementById('game-canvas');
+var ctx=canvas.getContext('2d');
+var wrapper=document.getElementById('wrapper');
+var dpr=Math.min(window.devicePixelRatio||1,2); // 限制DPR防性能问题
+
+function resize(){
+  var vw=window.innerWidth,vh=window.innerHeight;
+  // 飞书底部工具栏占约44px，预留安全区
+  var safeBottom=44,safeTop=0;
+  var availH=vh-safeBottom;
+  var scale=Math.min(vw/FIXED_W,availH/FIXED_H);
+  var dw=Math.round(FIXED_W*scale),dh=Math.round(FIXED_H*scale);
+  var ox=Math.round((vw-dw)/2),oy=Math.round((availH-dh)/2);
+  canvas.width=FIXED_W*dpr;canvas.height=FIXED_H*dpr;
+  // Canvas填满wrapper，wrapper由transform控制位置
+  canvas.style.width='100%';canvas.style.height='100%';
+  canvas.style.left='0';canvas.style.top='0';
+  wrapper.style.width=FIXED_W+'px';wrapper.style.height=FIXED_H+'px';
+  wrapper.style.transform='translate('+ox+'px,'+oy+'px) scale('+scale+')';
+  wrapper.style.transformOrigin='top left';
+  G._scale=scale;G._ox=ox;G._oy=oy;G._safeBottom=safeBottom;
+}
+window.addEventListener('resize',resize);
+window.addEventListener('orientationchange',function(){setTimeout(resize,300)});
+
+// ==================== 游戏状态 ====================
+var G={
+  hero:{x:195,y:422,hp:100,maxHp:100,atk:10,spd:2,atkSpeed:1,atkRange:120,atkTimer:0,
+    crit:0,dodge:0,vx:0,vy:0,targetVx:0,targetVy:0},
+  monsters:[],cards:[],projectiles:[],particles:[],flyingGold:[],
+  gold:100,score:0,kills:0,phase:'playing', // playing | over | win
+  chapter:1,wave:1,timeLeft:TOTAL_TIME,waveTimer:0,waveToastTimer:0,nextWaveReady:false,
+  overflowCard:null,statExpanded:false,
+  cardPool:[
+    {id:'atk',icon:'🗡️',name:'锋利刀刃',desc:'攻击力+5',apply:function(){G.hero.atk+=5}},
+    {id:'def',icon:'🛡️',name:'铁壁',desc:'受到伤害-20%',apply:function(){G.hero.dmgReduce=(G.hero.dmgReduce||0)+0.2}},
+    {id:'spd',icon:'⚡',name:'迅捷',desc:'攻击速度+30%',apply:function(){G.hero.atkSpeed*=1.3}},
+    {id:'lifesteal',icon:'💀',name:'吸血',desc:'伤害15%回复',apply:function(){G.hero.lifesteal=(G.hero.lifesteal||0)+0.15}},
+    {id:'fire',icon:'🔥',name:'燃烧',desc:'攻击附带5点火焰伤害',apply:function(){G.hero.fireDmg=(G.hero.fireDmg||0)+5}},
+    {id:'ice',icon:'❄️',name:'冰冻',desc:'减缓30%怪物速度',apply:function(){G.hero.slow=(G.hero.slow||0)+0.3}},
+    {id:'crit',icon:'🎯',name:'精准',desc:'暴击率+25%',apply:function(){G.hero.crit=Math.min(G.hero.crit+0.25,1)}},
+    {id:'dodge',icon:'💨',name:'闪避',desc:'闪避率+20%',apply:function(){G.hero.dodge=Math.min(G.hero.dodge+0.2,0.8)}}
+  ],
+  _scale:1,_ox:0,_oy:0
+};
+resize(); // 必须在G定义之后调用
+
+// ==================== 模块4：DOM UI 初始化 ====================
+var cardRow=document.getElementById('card-row');
+var cardTooltip=document.getElementById('card-tooltip');
+var overflowHint=document.getElementById('overflow-hint');
+var waveToast=document.getElementById('wave-toast');
+var endPanel=document.getElementById('end-panel');
+
+// 构建6格卡槽
+for(var i=0;i<MAX_CARDS;i++){
+  (function(idx){
+    var el=document.createElement('div');el.className='card-slot';el.dataset.index=idx;
+    el.innerHTML='<div class="slot-num">'+(idx+1)+'</div>';
+    el.addEventListener('click',function(e){e.stopPropagation();onCardClick(idx,el)});
+    el.addEventListener('touchstart',function(e){e.stopPropagation();showTooltip(idx,el);});
+    el.addEventListener('touchend',function(){hideTooltip()});
+    cardRow.appendChild(el);
+    G.cards[idx]=null;
+  })(i);
+}
+
+function onCardClick(idx,el){
+  if(G.phase!=='playing')return;
+  if(G.overflowCard!==null){
+    // 溢出替换
+    replaceCard(idx);
+    return;
+  }
+  var card=G.cards[idx];
+  if(card){showTooltip(idx,el);return;}
+  // 空槽=抽卡
+  drawCard(idx);
+}
+
+function showTooltip(idx,el){
+  var card=G.cards[idx];
+  if(!card){hideTooltip();return;}
+  var rect=el.getBoundingClientRect();
+  var wrapRect=wrapper.getBoundingClientRect();
+  var tx=rect.left-wrapRect.left+rect.width/2,ty=rect.top-wrapRect.top-70;
+  if(tx<20)tx=20;if(tx>FIXED_W-70)tx=FIXED_W-70;
+  if(ty<20)ty=rect.bottom-wrapRect.top+10;
+  cardTooltip.style.left=tx+'px';cardTooltip.style.top=ty+'px';
+  cardTooltip.style.display='block';
+  cardTooltip.innerHTML='<div class="tt-name">'+card.icon+' '+card.name+'</div>'+
+    '<div class="tt-desc">'+card.desc+'</div>'+
+    (G.overflowCard===null?'<span class="tt-sell" id="tt-sell-btn">出售 💰'+CARD_SELL+'</span>':'');
+  var sellBtn=document.getElementById('tt-sell-btn');
+  if(sellBtn)sellBtn.addEventListener('click',function(e){e.stopPropagation();sellCard(idx)});
+}
+
+function hideTooltip(){cardTooltip.style.display='none'}
+
+// ==================== 模块4：卡牌逻辑 ====================
+function drawCard(slotIdx){
+  if(G.gold<CARD_COST)return;
+  G.gold-=CARD_COST;
+  var pool=G.cardPool;
+  var template=pool[Math.floor(Math.random()*pool.length)];
+  var card={icon:template.icon,name:template.name,desc:template.desc,id:template.id,level:1};
+  // 检查同卡升级
+  for(var i=0;i<MAX_CARDS;i++){
+    if(G.cards[i]&&G.cards[i].id===card.id&&i!==slotIdx){
+      card.level=G.cards[i].level+1;
+    }
+  }
+  if(slotIdx>=0&&slotIdx<MAX_CARDS&&!G.cards[slotIdx]){
+    G.cards[slotIdx]=card;
+    template.apply();
+    spawnParticles(FIXED_W/2,FIXED_H/2,8,'#8b5cf6');
+  }else{
+    // 找空槽
+    var empty=-1;
+    for(var j=0;j<MAX_CARDS;j++){if(!G.cards[j]){empty=j;break}}
+    if(empty>=0){
+      G.cards[empty]=card;template.apply();
+      spawnParticles(FIXED_W/2,FIXED_H/2,8,'#8b5cf6');
+    }else{
+      // 溢出
+      G.overflowCard=card;
+      overflowHint.style.display='block';
+      for(var k=0;k<cardRow.children.length;k++)cardRow.children[k].classList.add('overflow-active');
+    }
+  }
+  updateCardDOM();
+}
+
+function replaceCard(oldIdx){
+  var old=G.cards[oldIdx];
+  // 返现
+  G.gold+=CARD_SELL;
+  spawnFlyingGold(FIXED_W/2,FIXED_H-boxY(oldIdx),CARD_SELL);
+  // 撤销旧卡效果(简化：重新计算)
+  G.cards[oldIdx]=G.overflowCard;
+  // 应用新卡
+  var template=G.cardPool.find(function(c){return c.id===G.overflowCard.id});
+  if(template)template.apply();
+  G.overflowCard=null;
+  overflowHint.style.display='none';
+  for(var k=0;k<cardRow.children.length;k++)cardRow.children[k].classList.remove('overflow-active');
+  spawnParticles(FIXED_W/2,480,12,'#ffd700');
+  updateCardDOM();
+  recalcStats();
+}
+
+function sellCard(idx){
+  var card=G.cards[idx];
+  if(!card)return;
+  G.gold+=CARD_SELL;
+  G.cards[idx]=null;
+  spawnFlyingGold(FIXED_W/2,480,CARD_SELL);
+  hideTooltip();
+  updateCardDOM();
+  recalcStats();
+}
+
+function boxY(idx){return FIXED_H-70-64-10}
+
+function updateCardDOM(){
+  for(var i=0;i<MAX_CARDS;i++){
+    var el=cardRow.children[i];var card=G.cards[i];
+    el.className='card-slot';
+    if(card){el.classList.add('has-card');el.innerHTML='<div class="card-icon">'+card.icon+'</div><div class="card-name">'+card.name+'</div>'+(card.level>1?'<div class="card-level">Lv.'+card.level+'</div>':'');}
+    else{el.innerHTML='<div class="slot-num">'+(i+1)+'</div>'}
+    if(G.overflowCard!==null)el.classList.add('overflow-active');
+  }
+}
+
+function recalcStats(){
+  // 重置基础值后重新应用所有卡
+  G.hero.atk=10;G.hero.dmgReduce=0;G.hero.lifesteal=0;G.hero.fireDmg=0;
+  G.hero.slow=0;G.hero.crit=0;G.hero.dodge=0;G.hero.atkSpeed=1;
+  for(var i=0;i<MAX_CARDS;i++){
+    if(!G.cards[i])continue;
+    var t=G.cardPool.find(function(c){return c.id===G.cards[i].id});
+    if(t)for(var lv=0;lv<G.cards[i].level;lv++)t.apply();
+  }
+}
+
+// ==================== 模块3：属性面板 ====================
+document.getElementById('stat-toggle').addEventListener('click',function(e){
+  e.stopPropagation();
+  var p=document.getElementById('stat-panel');
+  G.statExpanded=!G.statExpanded;
+  if(G.statExpanded){p.classList.add('expanded');this.textContent='▲'}
+  else{p.classList.remove('expanded');this.textContent='▼'}
+});
+
+function updateStatPanel(){
+  var h=G.hero;
+  var hpPct=h.hp/h.maxHp;
+  var fill=document.getElementById('stat-hp-fill');
+  fill.style.width=(hpPct*100)+'%';
+  fill.style.background=hpPct>0.5?'#22c55e':hpPct>0.25?'#f59e0b':'#ef4444';
+  document.getElementById('st-hp').textContent=Math.round(h.hp)+'/'+h.maxHp;
+  document.getElementById('st-atk').textContent=Math.round(h.atk);
+  document.getElementById('st-spd').textContent=G.hero.atkSpeed.toFixed(1);
+  document.getElementById('st-crit').textContent=Math.round(G.hero.crit*100)+'%';
+  document.getElementById('st-dodge').textContent=Math.round(G.hero.dodge*100)+'%';
+  document.getElementById('st-move').textContent=G.hero.spd.toFixed(1);
+  document.getElementById('st-gold').textContent=G.gold;
+  document.getElementById('gold-display').textContent='💰'+G.gold;
+  document.getElementById('timer').textContent=formatTime(G.timeLeft);
+  document.getElementById('chapter-name').textContent=CHAPTER_NAMES[G.chapter-1]||'';
+}
+
+// ==================== 模块1：摇杆 ====================
+var joystick={active:false,baseX:0,baseY:0,tipX:0,tipY:0,dx:0,dy:0,radius:40,pointerId:null};
+var joystickBlocked=false;
+
+function isInUIZone(sx,sy){
+  // 左下角属性面板
+  if(sx<130&&sy>FIXED_H-200)return true;
+  // 底部卡槽
+  if(sy>FIXED_H-160)return true;
+  return false;
+}
+
+wrapper.addEventListener('pointerdown',function(e){
+  if(G.phase!=='playing')return;
+  var rect=wrapper.getBoundingClientRect();
+  var sx=(e.clientX-rect.left)/G._scale,sy=(e.clientY-rect.top)/G._scale;
+  if(isInUIZone(sx,sy)){joystickBlocked=true;return}
+  joystickBlocked=false;
+  joystick.active=true;joystick.pointerId=e.pointerId;
+  joystick.baseX=sx;joystick.baseY=sy;joystick.tipX=sx;joystick.tipY=sy;
+  joystick.dx=0;joystick.dy=0;
+  wrapper.setPointerCapture(e.pointerId);e.preventDefault();
+});
+
+wrapper.addEventListener('pointermove',function(e){
+  if(!joystick.active||e.pointerId!==joystick.pointerId)return;
+  var rect=wrapper.getBoundingClientRect();
+  var sx=(e.clientX-rect.left)/G._scale,sy=(e.clientY-rect.top)/G._scale;
+  var dx=sx-joystick.baseX,dy=sy-joystick.baseY;
+  var dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist>joystick.radius){dx=dx/dist*joystick.radius;dy=dy/dist*joystick.radius}
+  joystick.tipX=joystick.baseX+dx;joystick.tipY=joystick.baseY+dy;
+  joystick.dx=dx/joystick.radius;joystick.dy=dy/joystick.radius;
+  G.hero.targetVx=joystick.dx*G.hero.spd;
+  G.hero.targetVy=joystick.dy*G.hero.spd;
+  e.preventDefault();
+});
+
+wrapper.addEventListener('pointerup',function(e){
+  if(e.pointerId!==joystick.pointerId)return;
+  joystick.active=false;joystick.pointerId=null;
+  G.hero.targetVx=0;G.hero.targetVy=0;
+});
+
+// ==================== 模块1：物理阻尼 ====================
+function updateMovement(dt){
+  var h=G.hero;
+  var accel=8,decel=5;
+  if(joystick.active){h.vx+=(h.targetVx-h.vx)*Math.min(accel*dt,1);h.vy+=(h.targetVy-h.vy)*Math.min(accel*dt,1)}
+  else{h.vx+=(-h.vx)*Math.min(decel*dt,1);h.vy+=(-h.vy)*Math.min(decel*dt,1)}
+  if(Math.abs(h.vx)<0.1)h.vx=0;if(Math.abs(h.vy)<0.1)h.vy=0;
+  h.x+=h.vx;h.y+=h.vy;
+  h.x=Math.max(20,Math.min(FIXED_W-20,h.x));
+  h.y=Math.max(20,Math.min(FIXED_H-20,h.y));
+}
+
+// ==================== 模块5：怪物系统 ====================
+function spawnMonster(type){
+  if(G.monsters.length>=MAX_MONSTERS)return;
+  var side=Math.floor(Math.random()*4);
+  var x,y;
+  if(side===0){x=Math.random()*FIXED_W;y=-20}
+  else if(side===1){x=FIXED_W+20;y=Math.random()*FIXED_H}
+  else if(side===2){x=Math.random()*FIXED_W;y=FIXED_H+20}
+  else{x=-20;y=Math.random()*FIXED_H}
+  var waveHpMult=1+(G.chapter-1)*0.5+(G.wave-1)*0.1;
+  var waveAtkMult=1+(G.chapter-1)*0.5+(G.wave-1)*0.1;
+  if(type==='boss'){
+    G.monsters.push({x:x,y:y,hp:150*waveHpMult,maxHp:150*waveHpMult,atk:20*waveAtkMult,spd:1,type:'boss',icon:'👹',atkTimer:0,atkCooldown:1.5,range:80,ranged:false,size:20,slowTimer:0});
+  }else if(type==='ranged'){
+    G.monsters.push({x:x,y:y,hp:30*waveHpMult,maxHp:30*waveHpMult,atk:8*waveAtkMult,spd:0.8,type:'ranged',icon:'🏹',atkTimer:0,atkCooldown:2,range:150,ranged:true,size:14,slowTimer:0});
+  }else{
+    G.monsters.push({x:x,y:y,hp:20*waveHpMult,maxHp:20*waveHpMult,atk:5*waveAtkMult,spd:1.2,type:'melee',icon:'👾',atkTimer:0,atkCooldown:1,range:30,ranged:false,size:14,slowTimer:0});
+  }
+}
+
+function updateMonsters(dt){
+  var h=G.hero,heroAlive=h.hp>0;
+  for(var i=G.monsters.length-1;i>=0;i--){
+    var m=G.monsters[i];
+    // 减速
+    var spd=m.spd;if(m.slowTimer>0){spd*=Math.max(0.3,1-G.hero.slow);m.slowTimer-=dt}
+    // 移动
+    if(heroAlive){
+      var dx=h.x-m.x,dy=h.y-m.y,dist=Math.sqrt(dx*dx+dy*dy)||1;
+      if(m.ranged){
+        if(dist>m.range-20){m.x+=(dx/dist)*spd*60*dt;m.y+=(dy/dist)*spd*60*dt}
+      }else{
+        if(dist>m.range-5){m.x+=(dx/dist)*spd*60*dt;m.y+=(dy/dist)*spd*60*dt}
+      }
+    }
+    // 近战攻击
+    if(!m.ranged&&heroAlive){
+      var d2h=distSq(m.x,m.y,h.x,h.y);
+      m.atkTimer-=dt;
+      if(d2h<m.range*m.range&&m.atkTimer<=0){
+        m.atkTimer=m.atkCooldown;
+        dealDamageToHero(m.atk);
+        // 击退
+        var kdx=h.x-m.x,kdy=h.y-m.y,kd=Math.sqrt(kdx*kdx+kdy*kdy)||1;
+        h.vx+=(kdx/kd)*3;h.vy+=(kdy/kd)*3;
+      }
+    }
+    // 远程攻击
+    if(m.ranged&&heroAlive){
+      m.atkTimer-=dt;
+      if(m.atkTimer<=0&&distSq(m.x,m.y,h.x,h.y)<m.range*m.range){
+        m.atkTimer=m.atkCooldown;
+        G.projectiles.push({x:m.x,y:m.y,targetX:h.x,targetY:h.y,spd:150,atk:m.atk,fromMonster:true,
+          sx:m.x,sy:m.y,life:0,maxLife:2});
+      }
+    }
+    // 边界
+    m.x=Math.max(5,Math.min(FIXED_W-5,m.x));m.y=Math.max(5,Math.min(FIXED_H-5,m.y));
+  }
+}
+
+function dealDamageToHero(dmg){
+  if(G.hero.dodge>0&&Math.random()<G.hero.dodge)return;
+  dmg*=(1-(G.hero.dmgReduce||0));
+  G.hero.hp-=dmg;
+  spawnParticles(G.hero.x,G.hero.y,5,'#ef4444');
+}
+
+// ==================== 模块6：攻击系统 ====================
+function updateAttack(dt){
+  var h=G.hero;
+  h.atkTimer-=dt;
+  if(h.atkTimer>0)return;
+  // 找最近怪物
+  var nearest=null,nearestDist=Infinity;
+  for(var i=0;i<G.monsters.length;i++){
+    var d=distSq(h.x,h.y,G.monsters[i].x,G.monsters[i].y);
+    if(d<h.atkRange*h.atkRange&&d<nearestDist){nearestDist=d;nearest=G.monsters[i]}
+  }
+  if(!nearest)return;
+  h.atkTimer=1/G.hero.atkSpeed;
+  // 发射弹道
+  G.projectiles.push({x:h.x,y:h.y,targetX:nearest.x,targetY:nearest.y,spd:300,atk:h.atk,fromMonster:false,sx:h.x,sy:h.y,life:0,maxLife:0.6,crit:Math.random()<G.hero.crit,fireDmg:G.hero.fireDmg||0});
+}
+
+function updateProjectiles(dt){
+  for(var i=G.projectiles.length-1;i>=0;i--){
+    var p=G.projectiles[i];p.life+=dt;
+    var dx=p.targetX-p.x,dy=p.targetY-p.y,dist=Math.sqrt(dx*dx+dy*dy)||1;
+    p.x+=(dx/dist)*p.spd*dt;p.y+=(dy/dist)*p.spd*dt;
+    if(p.fromMonster){
+      // 怪物弹道打英雄
+      if(distSq(p.x,p.y,G.hero.x,G.hero.y)<400){
+        dealDamageToHero(p.atk);G.projectiles.splice(i,1);i--;
+      }else if(p.life>p.maxLife){G.projectiles.splice(i,1);i--}
+    }else{
+      // 英雄弹道打怪物
+      var hit=false;
+      for(var j=G.monsters.length-1;j>=0;j--){
+        var m=G.monsters[j];
+        if(distSq(p.x,p.y,m.x,m.y)<400){
+          var dmg=p.atk;if(p.crit)dmg*=2;dmg+=p.fireDmg;
+          m.hp-=dmg;
+          // 吸血
+          if(G.hero.lifesteal)G.hero.hp=Math.min(G.hero.maxHp,G.hero.hp+dmg*G.hero.lifesteal);
+          // 冰冻
+          if(G.hero.slow>0)m.slowTimer=2;
+          // 伤害数字
+          G.particles.push({x:m.x,y:m.y-10,vx:0,vy:-40,life:0.8,text:Math.round(dmg),color:p.crit?'#ffd700':'#fff'});
+          G.particles.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*30,vy:(Math.random()-0.5)*30,life:0.3,color:p.fireDmg?'#ff6600':'#fff',size:3});
+          hit=true;
+          if(m.hp<=0){killMonster(j)}else{G.projectiles.splice(i,1);i--}
+          break;
+        }
+      }
+      if(!hit&&p.life>p.maxLife){G.projectiles.splice(i,1);i--}
+    }
+  }
+}
+
+function killMonster(idx){
+  var m=G.monsters[idx];
+  G.monsters.splice(idx,1);
+  G.kills++;G.score+=m.type==='boss'?100:10;
+  var goldDrop=m.type==='boss'?30:10;
+  G.gold+=goldDrop;
+  spawnFlyingGold(m.x,m.y,goldDrop);
+  // 死亡粒子
+  for(var k=0;k<12;k++)G.particles.push({x:m.x,y:m.y,vx:(Math.random()-0.5)*80,vy:(Math.random()-0.5)*80,life:0.5,color:m.type==='boss'?'#ffd700':'#888',size:m.type==='boss'?5:3});
+  updateStatPanel();
+}
+
+// ==================== 金币飞行特效 ====================
+function spawnFlyingGold(x,y,amount){
+  G.flyingGold.push({x:x,y:y,targetX:FIXED_W-40,targetY:40,life:0,maxLife:0.6,amount:amount});
+}
+
+function updateFlyingGold(dt){
+  for(var i=G.flyingGold.length-1;i>=0;i--){
+    var f=G.flyingGold[i];f.life+=dt;var t=f.life/f.maxLife;
+    f.x+=(f.targetX-f.x)*t*0.1+30*dt;f.y+=(f.targetY-f.y)*t*0.1;
+    if(f.life>=f.maxLife){G.flyingGold.splice(i,1);i--}
+  }
+}
+
+// ==================== 粒子系统 ====================
+function spawnParticles(x,y,count,color){
+  for(var i=0;i<count;i++)G.particles.push({x:x,y:y,vx:(Math.random()-0.5)*60,vy:(Math.random()-0.5)*60,life:0.4+Math.random()*0.3,color:color,size:2+Math.random()*3});
+}
+
+function updateParticles(dt){
+  for(var i=G.particles.length-1;i>=0;i--){
+    var p=G.particles[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+    if(p.life<=0){G.particles.splice(i,1);i--}
+  }
+}
+
+// ==================== 模块2：波次系统 ====================
+function updateWave(dt){
+  G.waveTimer+=dt;G.timeLeft-=dt;
+  if(G.timeLeft<=0){endGame(true);return}
+  if(G.hero.hp<=0){endGame(false);return}
+
+  // 波次切换
+  if(G.waveTimer>=WAVE_TIME&&G.monsters.length===0&&!G.nextWaveReady){
+    G.nextWaveReady=true;G.waveTimer=0;
+    G.wave++;if(G.wave>WAVES_PER_CHAPTER){G.wave=1;G.chapter++
+      if(G.chapter>CHAPTER_COUNT){endGame(true);return}}
+    showWaveToast();
+    setTimeout(function(){
+      G.nextWaveReady=false;spawnWave();
+    },1500);
+  }
+
+  // 初始出怪
+  if(G.waveTimer<3&&G.monsters.length<3+Math.min(G.chapter*2,12)){
+    for(var i=0;i<2;i++)spawnMonster(G.wave===4?'boss':(Math.random()<0.2?'ranged':'melee'));
+  }
+  // 持续出怪
+  if(G.monsters.length<Math.min(8+G.chapter*2,MAX_MONSTERS)&&!G.nextWaveReady){
+    if(Math.random()<0.02)spawnMonster(Math.random()<0.15?'ranged':'melee');
+  }
+}
+
+function spawnWave(){
+  var base=3+G.wave;if(G.wave===4)base=5;
+  for(var i=0;i<base;i++){
+    if(G.wave===4&&i===0)spawnMonster('boss');
+    else if(Math.random()<0.3)spawnMonster('ranged');
+    else spawnMonster('melee');
+  }
+}
+
+function showWaveToast(){
+  var text=(G.wave===4?'⚠ Boss波！':'')+'第'+G.chapter+'大关 第'+G.wave+'波';
+  waveToast.textContent=text;waveToast.style.opacity='1';
+  setTimeout(function(){waveToast.style.opacity='0'},1500);
+}
+
+function endGame(win){
+  G.phase=win?'win':'over';
+  var grade=G.score>5000?'S':G.score>3000?'A':G.score>1500?'B':'C';
+  var gColor=grade==='S'?'#ffd700':grade==='A'?'#8b5cf6':grade==='B'?'#06b6d4':'#999';
+  endPanel.style.display='block';
+  endPanel.innerHTML='<h2 style="color:'+(win?'#ffd700':'#ef4444')+'">'+(win?'🎉 通关！':'💀 阵亡')+'</h2>'+
+    '<div class="end-grade" style="color:'+gColor+'">'+grade+' 级评价</div>'+
+    '<div class="end-stat">得分: <span>'+Math.round(G.score)+'</span></div>'+
+    '<div class="end-stat">击杀: <span>'+G.kills+'</span></div>'+
+    '<div class="end-stat">到达: <span>'+CHAPTER_NAMES[G.chapter-1]+' 第'+G.wave+'波</span></div>'+
+    '<div class="end-stat">剩余时间: <span>'+formatTime(Math.max(0,G.timeLeft))+'</span></div>'+
+    '<button id="btn-retry" onclick="restartGame()">🔄 再来一局</button>';
+}
+
+function restartGame(){
+  G.hero.x=195;G.hero.y=422;G.hero.hp=100;G.hero.maxHp=100;G.hero.atk=10;G.hero.spd=2;
+  G.hero.atkSpeed=1;G.hero.crit=0;G.hero.dodge=0;G.hero.vx=0;G.hero.vy=0;G.hero.targetVx=0;G.hero.targetVy=0;
+  G.hero.dmgReduce=0;G.hero.lifesteal=0;G.hero.fireDmg=0;G.hero.slow=0;G.hero.atkTimer=0;
+  G.monsters=[];G.projectiles=[];G.particles=[];G.flyingGold=[];G.cards=[];G.gold=100;
+  G.score=0;G.kills=0;G.phase='playing';G.chapter=1;G.wave=1;G.timeLeft=TOTAL_TIME;
+  G.waveTimer=0;G.nextWaveReady=false;G.overflowCard=null;
+  for(var i=0;i<MAX_CARDS;i++)G.cards[i]=null;
+  overflowHint.style.display='none';endPanel.style.display='none';
+  for(var k=0;k<cardRow.children.length;k++)cardRow.children[k].classList.remove('overflow-active');
+  hideTooltip();updateCardDOM();updateStatPanel();
+}
+
+function formatTime(s){var m=Math.floor(s/60),sec=Math.floor(s%60);return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
+
+// ==================== Canvas 渲染 ====================
+function render(){
+  ctx.setTransform(1,0,0,1,0,0); // 重置变换
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.scale(dpr,dpr); // Canvas物理像素→逻辑像素
+  // 背景
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,FIXED_W,FIXED_H);
+  // 网格
+  ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  for(var x=0;x<FIXED_W;x+=30)for(var y=0;y<FIXED_H;y+=30){ctx.strokeRect(x,y,30,30)}
+
+  // 怪物
+  for(var i=0;i<G.monsters.length;i++){
+    var m=G.monsters[i];
+    ctx.save();
+    // 光晕
+    ctx.fillStyle=m.type==='boss'?'rgba(255,215,0,0.15)':m.type==='ranged'?'rgba(59,130,246,0.1)':'rgba(239,68,68,0.1)';
+    ctx.beginPath();ctx.arc(m.x,m.y,m.size+8,0,Math.PI*2);ctx.fill();
+    // 身体
+    var bodyColor=m.type==='boss'?'#ffd700':m.type==='ranged'?'#3b82f6':'#ef4444';
+    ctx.fillStyle=bodyColor;ctx.beginPath();ctx.arc(m.x,m.y,m.size,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=2;ctx.stroke();
+    // 图标
+    ctx.fillStyle='#fff';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(m.icon,m.x,m.y+1);
+    // 血条
+    var bw=m.size*2,bh=4;var bx=m.x-bw/2,by=m.y-m.size-8;
+    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#22c55e';ctx.fillRect(bx,by,bw*(m.hp/m.maxHp),bh);
+    ctx.restore();
+  }
+
+  // 英雄
+  ctx.save();
+  ctx.fillStyle='rgba(59,130,246,0.2)';ctx.beginPath();ctx.arc(G.hero.x,G.hero.y,22,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(G.hero.x,G.hero.y,16,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2.5;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('⚔',G.hero.x,G.hero.y);
+  ctx.restore();
+
+  // 弹道
+  for(var j=0;j<G.projectiles.length;j++){
+    var p=G.projectiles[j];
+    ctx.fillStyle=p.fromMonster?'#ef4444':(p.crit?'#ffd700':'#fff');
+    ctx.beginPath();ctx.arc(p.x,p.y,p.fromMonster?4:3,0,Math.PI*2);ctx.fill();
+    // 拖尾
+    ctx.strokeStyle=p.fromMonster?'rgba(239,68,68,0.3)':'rgba(255,255,255,0.3)';
+    ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.sx,p.sy);ctx.lineTo(p.x,p.y);ctx.stroke();
+  }
+
+  // 粒子
+  for(var k=0;k<G.particles.length;k++){
+    var pt=G.particles[k];if(pt.text){ctx.fillStyle=pt.color;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.globalAlpha=pt.life/0.8;ctx.fillText(pt.text,pt.x,pt.y);ctx.globalAlpha=1}
+    else{ctx.fillStyle=pt.color;ctx.globalAlpha=pt.life/0.5;ctx.beginPath();ctx.arc(pt.x,pt.y,pt.size||3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+  }
+
+  // 金币飞行
+  for(var l=0;l<G.flyingGold.length;l++){
+    var f=G.flyingGold[l];
+    ctx.fillStyle='#ffd700';ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+    ctx.globalAlpha=1-f.life/f.maxLife*0.5;ctx.fillText('+'+f.amount,f.x,f.y);ctx.globalAlpha=1;
+  }
+
+  // 模块1：摇杆渲染
+  if(joystick.active&&!joystickBlocked){
+    ctx.save();ctx.globalAlpha=0.3;
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(joystick.baseX,joystick.baseY,joystick.radius,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#8b5cf6';ctx.beginPath();ctx.arc(joystick.tipX,joystick.tipY,16,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ==================== 游戏循环 ====================
+var lastTime=0;
+function gameLoop(ts){
+  if(lastTime===0)lastTime=ts;var dt=Math.min((ts-lastTime)/1000,0.1);lastTime=ts;
+  if(G.phase==='playing'){
+    updateMovement(dt);
+    updateAttack(dt);
+    updateProjectiles(dt);
+    updateMonsters(dt);
+    updateParticles(dt);
+    updateFlyingGold(dt);
+    updateWave(dt);
+  }
+  render();
+  updateStatPanel();
+  requestAnimationFrame(gameLoop);
+}
+
+// ==================== 抽卡按钮 ====================
+document.getElementById('btn-draw').addEventListener('click',function(e){
+  e.stopPropagation();
+  if(G.phase!=='playing')return;
+  drawCard(-1);
+});
+
+// ==================== 桌面键盘支持 ====================
+document.addEventListener('keydown',function(e){
+  if(G.phase!=='playing')return;
+  var spd=G.hero.spd;
+  switch(e.key){case 'ArrowUp':case 'w':G.hero.targetVy=-spd;break;case 'ArrowDown':case 's':G.hero.targetVy=spd;break;case 'ArrowLeft':case 'a':G.hero.targetVx=-spd;break;case 'ArrowRight':case 'd':G.hero.targetVx=spd;break}
+});
+document.addEventListener('keyup',function(e){
+  switch(e.key){case 'ArrowUp':case 'w':case 'ArrowDown':case 's':G.hero.targetVy=0;break;case 'ArrowLeft':case 'a':case 'ArrowRight':case 'd':G.hero.targetVx=0;break}
+});
+
+// ==================== 启动 ====================
+spawnWave();updateCardDOM();updateStatPanel();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
