@@ -106,6 +106,19 @@ html,body{width:100%;height:100%;overflow:hidden;position:fixed;background:#0a0a
   color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);opacity:0;transition:opacity 0.3s;pointer-events:none}
 #overflow-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:40;background:rgba(0,0,0,0.8);color:#f59e0b;
   padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;display:none;text-align:center;border:1px solid rgba(245,158,11,0.5);pointer-events:none}
+#greed-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:55;background:rgba(10,10,30,0.97);
+  border:2px solid #f59e0b;border-radius:16px;padding:20px;text-align:center;display:none;min-width:240px;
+  box-shadow:0 0 40px rgba(245,158,11,0.4);animation:gIn 0.3s ease}
+@keyframes gIn{from{transform:translate(-50%,-50%) scale(0.8);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+#greed-panel h3{font-size:16px;color:#f59e0b;margin-bottom:6px}
+#greed-panel .greed-info{font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:12px;line-height:1.6}
+#greed-panel .greed-info span{color:#f59e0b;font-weight:700}
+.btn-greed{display:inline-block;padding:10px 20px;margin:4px 6px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:transform 0.15s}
+.btn-greed:active{transform:scale(0.95)}
+.btn-greed.settle{background:#151530;border:1px solid rgba(255,255,255,0.2);color:#fff}
+.btn-greed.continue{background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;color:#fff}
+#greed-level{position:absolute;top:52px;right:50px;z-index:35;font-size:10px;font-weight:700;color:#f59e0b;
+  text-shadow:0 1px 4px rgba(0,0,0,0.6);display:none;letter-spacing:1px}
 #end-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:60;background:#151530;border:2px solid #8b5cf6;
   border-radius:16px;padding:24px;text-align:center;display:none;min-width:260px;box-shadow:0 0 40px rgba(139,92,246,0.3)}
 #end-panel h2{font-size:22px;margin-bottom:8px}
@@ -175,6 +188,8 @@ html,body{width:100%;height:100%;overflow:hidden;position:fixed;background:#0a0a
     <div id="card-tooltip"></div>
     <div id="wave-toast"></div>
     <div id="overflow-hint">卡槽已满！选择旧卡替换</div>
+    <div id="greed-panel"></div>
+    <div id="greed-level"></div>
     <div id="end-panel"></div>
   </div>
 </div>
@@ -229,6 +244,7 @@ var G={hero:null,monsters:[],cards:[],projectiles:[],particles:[],flyingGold:[],
   waveTimer:0,nextWaveReady:false,overflowCard:null,statExpanded:false,
   talents:[],_scale:1,_ox:0,_oy:0,_autoCard:0,_timeSlow:0,_monsterFaster:0,
   _capsuleInterval:30,_capsuleTimer:0,capsules:[],_followWeapon:null,
+  greedLevel:0,greedMult:1,
   bossOrb:{x:0,y:0,angle:0,atkTimer:0,atk:8,atkCooldown:0.8,range:140},_nextCritDoubled:false,
   cardPool:[{id:'atk',icon:'A',name:'锋利刀刃',desc:'攻击力+5',apply:function(){G.hero.atk+=5}},
     {id:'def',icon:'D',name:'铁壁',desc:'受伤-20%',apply:function(){G.hero.dmgReduce=(G.hero.dmgReduce||0)+0.2}},
@@ -251,6 +267,7 @@ function launchGame(){
   G.timeLeft=TOTAL_TIME;G.waveTimer=0;G.nextWaveReady=false;G.overflowCard=null;
   G.talents=[];G._autoCard=0;G._timeSlow=0;G._monsterFaster=0;
   G._capsuleInterval=30;G._capsuleTimer=0;G.capsules=[];G._followWeapon=null;G._nextCritDoubled=false;
+  G.greedLevel=0;G.greedMult=1;
   document.getElementById('menu').style.display='none';
   document.getElementById('game').style.display='block';
   resize();buildGameUI();setupInput();refreshCapsules();spawnWave();
@@ -327,6 +344,7 @@ function spawnMonster(type,special){
   else if(side===2){x=20+Math.random()*(FIXED_W-40);y=FIXED_H+15}
   else{x=-15;y=20+Math.random()*(FIXED_H-40)}
   var wHp=1+(G.chapter-1)*0.5+(G.wave-1)*0.1,wAtk=1+(G.chapter-1)*0.5+(G.wave-1)*0.1;
+  var gm=1+G.greedLevel*0.5;wHp*=gm;wAtk*=gm;
   var mspd=1+G._monsterFaster;
   if(type==='boss')G.monsters.push({x:x,y:y,hp:150*wHp,maxHp:150*wHp,atk:20*wAtk,spd:1*mspd,type:'boss',icon:'B',atkTimer:0,atkC:1.5,range:80,ranged:false,size:20,slowTimer:0});
   else if(type==='ranged')G.monsters.push({x:x,y:y,hp:30*wHp,maxHp:30*wHp,atk:8*wAtk,spd:0.8*mspd,type:'ranged',icon:'R',atkTimer:0,atkC:2,range:150,ranged:true,size:14,slowTimer:0});
@@ -380,8 +398,8 @@ function updateProjectiles(dt){
   }
 }
 function killMonster(idx){
-  var m=G.monsters[idx];G.monsters.splice(idx,1);G.kills++;G.score+=m.type==='boss'?100:10;
-  var gd=m.goldBonus||(m.type==='boss'?30:10);G.gold+=gd;spawnFlyGold(m.x,m.y,gd);
+  var m=G.monsters[idx];G.monsters.splice(idx,1);G.kills++;G.score+=(m.type==='boss'?100:10)*G.greedMult;
+  var gd=(m.goldBonus||(m.type==='boss'?30:10))*G.greedMult;G.gold+=gd;spawnFlyGold(m.x,m.y,gd);
   for(var k=0;k<12;k++)G.particles.push({x:m.x,y:m.y,vx:(Math.random()-0.5)*80,vy:(Math.random()-0.5)*80,life:0.5,color:m.type==='boss'?'gold':'gray',sz:m.type==='boss'?5:3});
   if(m.buffOnKill){if(Math.random()<0.5){G.hero.maxHp+=5;G.hero.hp+=5}else G.hero.atk+=1;spawnParts(m.x,m.y,8,'green')}
   if(m.curseOnKill){G._nextCritDoubled=true;spawnParts(m.x,m.y,8,'purple')}
@@ -396,7 +414,11 @@ function updateWave(dt){
   G.waveTimer+=dt;var ts=G._timeSlow||0;G.timeLeft-=dt*(1-ts);
   if(G.timeLeft<=0){endGame(true);return}if(G.hero.hp<=0){endGame(false);return}
   if(G.waveTimer>=WAVE_TIME&&G.monsters.length===0&&!G.nextWaveReady){
-    G.nextWaveReady=true;G.waveTimer=0;G.wave++;if(G.wave>WAVES_PER_CH){G.wave=1;G.chapter++;if(G.chapter>CH_COUNT){endGame(true);return}}
+    G.nextWaveReady=true;G.waveTimer=0;G.wave++;if(G.wave>WAVES_PER_CH){
+      if(G.greedLevel>=3||G.chapter>=CH_COUNT){endGame(true);return}
+      showGreedPanel();return;
+    }
+    if(G.chapter>CH_COUNT){endGame(true);return}
     showWaveToast();setTimeout(function(){G.nextWaveReady=false;spawnWave()},1500);
   }
   if(G.waveTimer<3&&G.monsters.length<3+Math.min(G.chapter*2,12)&&!G.nextWaveReady){for(var i=0;i<2;i++)spawnMonster(G.wave===4?'boss':(Math.random()<0.2?'ranged':'melee'))}
@@ -504,6 +526,7 @@ function updateStatPanel(){
   document.getElementById('gold-display').textContent=''+G.gold;
   document.getElementById('timer').textContent=formatTime(G.timeLeft);
   document.getElementById('chapter-name').textContent=CHAPTERS[G.chapter-1]||'';
+  var gl=document.getElementById('greed-level');if(G.greedLevel>0){gl.style.display='block';gl.textContent='贪婪 ×'+G.greedMult+' ('+G.greedLevel+'/3)'}else gl.style.display='none';
   document.getElementById('bp-core').textContent='HP:'+Math.round(h.hp)+'/'+Math.round(h.maxHp)+' ATK:'+Math.round(h.atk)+' SPD:'+h.spd.toFixed(1);
   document.getElementById('bp-bonds').textContent='已激活: '+G.cards.filter(function(c){return c}).length+'/6 卡';
   document.getElementById('bp-talents').textContent='天赋: '+(G.talents.length===0?'无':G.talents.map(function(t){return t.icon}).join(''));
@@ -512,10 +535,20 @@ function updateStatPanel(){
 document.getElementById('blueprint-btn').addEventListener('click',function(e){e.stopPropagation();document.getElementById('blueprint-panel').classList.toggle('open')});
 document.getElementById('blueprint-close').addEventListener('click',function(e){e.stopPropagation();document.getElementById('blueprint-panel').classList.remove('open')});
 wrapper.addEventListener('click',function(e){if(document.getElementById('blueprint-panel').classList.contains('open')){var rect=document.getElementById('blueprint-panel').getBoundingClientRect();if(e.clientX<rect.left)document.getElementById('blueprint-panel').classList.remove('open')}});
+function showGreedPanel(){
+  G.phase='paused';var nextLevel=G.greedLevel+1,nextMult=G.greedMult*2,nextHp=Math.round((1+nextLevel*0.5)*100),nextAtk=Math.round((1+nextLevel*0.5)*100);
+  var gp=document.getElementById('greed-panel');gp.style.display='block';
+  gp.innerHTML='<h3>战后贪婪连战</h3><div class="greed-info">'+CHAPTERS[G.chapter-1]+'通关！<br>下一章敌人强化 <span>'+nextHp+'%</span> HP / ATK<br>奖励倍率 <span>×'+nextMult+'</span>（当前 ×'+G.greedMult+'）<br>贪婪层数 <span>'+(G.greedLevel+1)+'</span>/3</div><button class="btn-greed settle" onclick="acceptGreed(false)">结算</button><button class="btn-greed continue" onclick="acceptGreed(true)">贪婪 ×'+nextMult+'</button>';
+}
+function acceptGreed(goGreed){
+  document.getElementById('greed-panel').style.display='none';
+  if(goGreed){G.greedLevel++;G.greedMult*=2;G.wave=1;G.chapter++;G.nextWaveReady=false;G.waveTimer=0;G.phase='playing';document.getElementById('greed-level').style.display='block';document.getElementById('greed-level').textContent='贪婪 ×'+G.greedMult;spawnWave();updateStatPanel()}
+  else{endGame(true)}
+}
 function endGame(win){
   G.phase=win?'win':'over';var grade=G.score>5000?'S':G.score>3000?'A':G.score>1500?'B':'C',gC=grade==='S'?'gold':grade==='A'?'purple':grade==='B'?'cyan':'gray';
-  var ep=document.getElementById('end-panel');ep.style.display='block';
-  ep.innerHTML='<h2 style="color:'+(win?'gold':'red')+'">'+(win?'通关!':'阵亡')+'</h2><div class="end-grade" style="color:'+gC+'">'+grade+' 级</div><div class="end-stat">得分: <span>'+Math.round(G.score)+'</span></div><div class="end-stat">击杀: <span>'+G.kills+'</span></div><div class="end-stat">到达: <span>'+CHAPTERS[G.chapter-1]+' 第'+G.wave+'波</span></div><div class="end-stat">剩余: <span>'+formatTime(Math.max(0,G.timeLeft))+'</span></div><button class="btn-retry" onclick="restartGame()">再来</button>';
+  var ep=document.getElementById('end-panel');ep.style.display='block';document.getElementById('greed-panel').style.display='none';document.getElementById('greed-level').style.display='none';
+  ep.innerHTML='<h2 style="color:'+(win?'gold':'red')+'">'+(win?'通关!':'阵亡')+'</h2><div class="end-grade" style="color:'+gC+'">'+grade+' 级</div><div class="end-stat">得分: <span>'+Math.round(G.score)+'</span></div><div class="end-stat">击杀: <span>'+G.kills+'</span></div><div class="end-stat">贪婪: <span>×'+G.greedMult+' (层'+G.greedLevel+')</span></div><div class="end-stat">到达: <span>'+CHAPTERS[G.chapter-1]+' 第'+G.wave+'波</span></div><div class="end-stat">剩余: <span>'+formatTime(Math.max(0,G.timeLeft))+'</span></div><button class="btn-retry" onclick="restartGame()">再来</button>';
 }
 function restartGame(){
   G.phase='playing';G.monsters=[];G.projectiles=[];G.particles=[];G.flyingGold=[];
@@ -526,6 +559,7 @@ function restartGame(){
   for(var i=0;i<MAX_CARDS;i++)G.cards[i]=null;G.gold=100;G.score=0;G.kills=0;
   G.chapter=1;G.wave=1;G.timeLeft=TOTAL_TIME;G.waveTimer=0;G.nextWaveReady=false;G.overflowCard=null;
   G.talents=[];G._autoCard=0;G._timeSlow=0;G._monsterFaster=0;G._capsuleInterval=30;G._capsuleTimer=0;G._followWeapon=null;G._nextCritDoubled=false;
+  G.greedLevel=0;G.greedMult=1;document.getElementById('greed-level').style.display='none';
   document.getElementById('overflow-hint').style.display='none';document.getElementById('end-panel').style.display='none';
   var cr=document.getElementById('card-row');for(var k=0;k<cr.children.length;k++)cr.children[k].classList.remove('overflow-active');
   hideTooltip();updateCardDOM();updateStatPanel();refreshCapsules();spawnWave();
